@@ -61,7 +61,8 @@ async function createItem(guildId, name, chance, rarity, reply, secret = false) 
     roleGiven: null,
     objectType: 'personaje',
     promo: false,
-    collectable: 0
+    collectable: 0,
+    price: 0
   });
 
   await writeJSON(filePath, data);

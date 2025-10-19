@@ -2,8 +2,11 @@ const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Permission
 const dotenv = require('dotenv');
 const storage = require('./server/storage');
 const { searchItemByPartialName, searchItemByPartialNameSync } = require('./utils/itemSearch');
+const { Client: UnbClient } = require('unb-api');
 
 dotenv.config();
+
+const unbClient = new UnbClient(process.env.UNBELIEVABOAT_TOKEN);
 
 const client = new Client({
   intents: [
@@ -151,6 +154,8 @@ client.on('messageCreate', async (message) => {
       await handleResetCollectable(message, args);
     } else if (command === 'editpity') {
       await handleEditPity(message, args);
+    } else if (command === 'sell' || command === 'vender') {
+      await handleSell(message, args);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -797,7 +802,7 @@ async function handleEditItem(message, args) {
   if (!message.channel.isSendable()) return;
 
   if (args.length < 2) {
-    return message.channel.send('❌ Uso: `*edititem <nombre> <campo> <valor...>`\n**Campos:** chance, rarity, reply, tokens, role-given, object, promo, secret, collectable\n\nEjemplos:\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @NombreRol`\n`*edititem Joker promo true`\n`*edititem Joker secret true`\n`*edititem "Cuerpo Santo" collectable 5`');
+    return message.channel.send('❌ Uso: `*edititem <nombre> <campo> <valor...>`\n**Campos:** chance, rarity, reply, tokens, role-given, object, promo, secret, collectable, price\n\nEjemplos:\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @NombreRol`\n`*edititem Joker promo true`\n`*edititem Joker secret true`\n`*edititem "Cuerpo Santo" collectable 5`\n`*edititem Jack object persona`\n`*edititem Jack price 1000`');
   }
 
   let itemName;
@@ -964,8 +969,26 @@ async function handleEditItem(message, args) {
     await storage.updateItem(guildId, item.name, 'replyCollectable3', reply || null);
     return message.channel.send(`✅ Reply coleccionable 3 del premio **${item.name}** actualizado.`);
 
+  } else if (field === 'price' || field === 'precio') {
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    if (objectType === 'personaje') {
+      return message.channel.send(`❌ No puedes configurar precio para personajes. Solo para personas y objetos.\n\nCambia el tipo primero: \`*edititem ${item.name} object persona\``);
+    }
+
+    const price = parseInt(valueArgs[0]);
+    if (isNaN(price) || price < 0) {
+      return message.channel.send('❌ El precio debe ser un número mayor o igual a 0.');
+    }
+
+    await storage.updateItem(guildId, item.name, 'price', price);
+    
+    const guildInfo = await unbClient.getGuild(guildId).catch(() => null);
+    const currencySymbol = guildInfo?.currencySymbol || '💰';
+    
+    return message.channel.send(`✅ El precio de venta de **${item.name}** ha sido configurado a **${price}${currencySymbol}** (por unidad).`);
+
   } else {
-    return message.channel.send('❌ Campo inválido. Usa: chance, rarity, reply, tokens, role-given, object, promo, secret, collectable, name, replycollectable1, replycollectable2, replycollectable3');
+    return message.channel.send('❌ Campo inválido. Usa: chance, rarity, reply, tokens, role-given, object, promo, secret, collectable, name, price, replycollectable1, replycollectable2, replycollectable3');
   }
 }
 
@@ -1929,6 +1952,104 @@ async function handleInventory(message) {
   }
 
   await message.reply({ embeds: [embed] });
+}
+
+async function handleSell(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  if (args.length < 2) {
+    return message.reply('❌ Uso: `*sell <nombre> <cantidad>`\n\nEjemplo: `*sell Jack 5`\n\n**Nota:** Solo puedes vender personas y objetos, NO personajes.');
+  }
+
+  const quantity = parseInt(args[args.length - 1]);
+  if (isNaN(quantity) || quantity <= 0) {
+    return message.reply('❌ La cantidad debe ser un número mayor a 0.');
+  }
+
+  const itemName = args.slice(0, args.length - 1).join(' ');
+  
+  const allItems = await storage.getAllItems(guildId);
+  const item = await searchItemByPartialName(allItems, itemName);
+
+  if (!item) {
+    return message.reply(`❌ No se encontró el item **${itemName}**.`);
+  }
+
+  const objectType = (item.objectType || 'personaje').toLowerCase();
+  if (objectType === 'personaje') {
+    return message.reply(`❌ **${item.name}** es un personaje. Solo puedes vender **personas** y **objetos**.\n\nPara cambiar el tipo de este item, un administrador debe usar:\n\`*edititem ${item.name} object persona\``);
+  }
+
+  if (objectType !== 'persona' && objectType !== 'objeto' && objectType !== 'object') {
+    return message.reply(`❌ **${item.name}** no es vendible. Solo puedes vender personas y objetos.`);
+  }
+
+  const price = item.price || 0;
+  if (price === 0) {
+    return message.reply(`❌ **${item.name}** no tiene precio configurado.\n\nUn administrador debe configurarlo primero:\n\`*edititem ${item.name} price <cantidad>\``);
+  }
+
+  const collectables = await storage.getUserCollectables(guildId, message.author.id);
+  const currentCount = collectables[item.name] || 0;
+
+  if (currentCount < quantity) {
+    return message.reply(`❌ No tienes suficientes **${item.name}**.\n\n**Tienes:** ${currentCount}\n**Necesitas:** ${quantity}`);
+  }
+
+  const totalPrice = price * quantity;
+
+  try {
+    const guildInfo = await unbClient.getGuild(guildId).catch(() => null);
+    const currencySymbol = guildInfo?.currencySymbol || '💰';
+
+    await unbClient.editUserBalance(guildId, message.author.id, {
+      cash: totalPrice,
+      reason: `Venta de ${quantity}x ${item.name}`
+    });
+
+    for (let i = 0; i < quantity; i++) {
+      const collectablesData = await storage.getUserCollectables(guildId, message.author.id);
+      if (collectablesData[item.name] && collectablesData[item.name] > 0) {
+        const filePath = require('path').join(__dirname, 'data', `${guildId}_collectables.json`);
+        const fs = require('fs').promises;
+        const data = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+        
+        if (!data[message.author.id]) data[message.author.id] = {};
+        data[message.author.id][item.name] = (data[message.author.id][item.name] || 0) - 1;
+        
+        if (data[message.author.id][item.name] <= 0) {
+          delete data[message.author.id][item.name];
+        }
+        
+        await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      }
+    }
+
+    const rarityStars = storage.getRarityStars(item.rarity);
+    const embed = new EmbedBuilder()
+      .setColor(0x57F287)
+      .setTitle('💰 Venta Exitosa')
+      .setDescription(`Has vendido **${quantity}x ${item.name}**`)
+      .addFields(
+        { name: 'Item', value: `${rarityStars} ${item.name}`, inline: true },
+        { name: 'Cantidad', value: `${quantity}`, inline: true },
+        { name: 'Total Recibido', value: `${totalPrice}${currencySymbol}`, inline: true }
+      )
+      .setFooter({ text: `Precio unitario: ${price}${currencySymbol}` });
+
+    await message.reply({ embeds: [embed] });
+    console.log(`✅ ${message.author.tag} vendió ${quantity}x ${item.name} por ${totalPrice}${currencySymbol}`);
+
+  } catch (error) {
+    console.error('Error al vender item:', error);
+    
+    if (error.response?.status === 403) {
+      return message.reply('❌ El bot no tiene permisos para gestionar la economía de UnbelievaBoat en este servidor.\n\nAsegúrate de que la aplicación esté autorizada en: https://unbelievaboat.com/applications');
+    }
+    
+    return message.reply('❌ Ocurrió un error al procesar la venta. Verifica que UnbelievaBoat esté configurado correctamente en el servidor.');
+  }
 }
 
 async function handleResetCollectable(message, args) {

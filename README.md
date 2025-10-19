@@ -77,10 +77,12 @@ pm2 startup
 - `*inventory` - Ver tu inventario
 - `*pity` - Ver tu contador de pity
 - `*canjear <ID>` - Canjear tokens
+- `*sell <nombre> <cantidad>` - Vender personas/objetos por dinero (UnbelievaBoat)
 
 ### Para Administradores
 - `*createitem <nombre>` - Crear premio
-- `*edititem <nombre> <campo> <valor>` - Editar premio
+- `*edititem <nombre> <campo> <valor>` - Editar premio (campos: chance, rarity, reply, price, etc.)
+- `*edititem <nombre> price <cantidad>` - Configurar precio de venta (solo personas/objetos)
 - `*setticketrole <rol>` - Configurar rol de ticket
 - `*editpull <url>` - Configurar GIF de tirada
 - `*editpulltimer <ms>` - Configurar duración del GIF

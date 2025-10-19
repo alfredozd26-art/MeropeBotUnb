@@ -16,7 +16,8 @@
   "license": "MIT",
   "dependencies": {
     "discord.js": "^14.23.2",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "unb-api": "^1.4.0"
   },
   "engines": {
     "node": ">=18.0.0"

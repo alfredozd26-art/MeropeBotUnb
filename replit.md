@@ -8,10 +8,30 @@ Bot de Discord tipo gacha desarrollado por Gina y amigos para un proyecto univer
 
 - **Lenguaje:** JavaScript (Node.js)
 - **Framework:** discord.js v14
+- **Economía:** UnbelievaBoat API (unb-api) para sistema de venta de items
 - **Almacenamiento:** Archivos JSON (configuración independiente por servidor)
 - **Entorno:** Node.js 18+
 
 ## Cambios Recientes
+
+### Sistema de Venta de Items con UnbelievaBoat (Octubre 19, 2025)
+- **Integración con UnbelievaBoat API:** Los usuarios ahora pueden vender sus personas y objetos por dinero real en UnbelievaBoat
+- **Nuevo comando `*sell`:** Vende personas y objetos (NO personajes) de tu inventario
+  - Uso: `*sell <nombre> <cantidad>`
+  - Ejemplo: `*sell Jack 5` (vende 5 copias de Jack)
+  - Solo funciona con items tipo "persona" u "objeto"
+  - Los personajes NO se pueden vender
+- **Nuevo campo `price` en items:** Los administradores pueden configurar precios de venta
+  - Uso: `*edititem <nombre> price <cantidad>`
+  - Ejemplo: `*edititem Jack price 1000` (cada Jack se vende por 1000 monedas)
+  - Solo se puede configurar precio para personas y objetos, no para personajes
+- **Integración automática:** El dinero se agrega directamente a la economía de UnbelievaBoat
+- **Validaciones completas:**
+  - Verifica que el usuario tenga suficientes copias en su inventario
+  - Verifica que el item tenga precio configurado
+  - Verifica que el item sea vendible (persona/objeto)
+  - Muestra mensajes de error claros si algo falla
+- **Dependencias:** Requiere `unb-api` y token de UnbelievaBoat configurado
 
 ### Sistema Anti-Spam Optimizado y Comandos Slash (Octubre 2025)
 - **Cooldown fijo de 5 segundos:** Sistema simple y efectivo de prevención de spam
@@ -130,11 +150,15 @@ pm2 start index.js --name gacha-bot
 ## Variables de Entorno Requeridas
 
 - `DISCORD_TOKEN` - Token del bot de Discord
+- `UNBELIEVABOAT_TOKEN` - Token de la API de UnbelievaBoat (para sistema de venta de items)
 
 ## Estado del Proyecto
 
 ✅ Conversión a JavaScript completada
 ✅ Nuevo comando *editpulltimer agregado
+✅ Sistema de venta de items con UnbelievaBoat implementado
+✅ Campo "price" agregado a los items
+✅ Comando *sell funcionando correctamente
 ✅ Optimizado para Cyberpanel
 ✅ Sistema de almacenamiento JSON funcionando
 ✅ Todos los comandos funcionando correctamente
