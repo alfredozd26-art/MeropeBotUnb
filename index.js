@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, PermissionFlagsBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+(const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, PermissionFlagsBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const dotenv = require('dotenv');
 const storage = require('./server/storage');
 const { searchItemByPartialName, searchItemByPartialNameSync } = require('./utils/itemSearch');
@@ -1918,7 +1918,7 @@ async function handleInventory(message) {
 
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle('🎒 Tu Inventario')
+    .setTitle ('Tu Inventario')
     .setDescription(`${message.author.username}, aquí están tus personas y objetos coleccionables:`);
 
   let hasAnyItem = false;
