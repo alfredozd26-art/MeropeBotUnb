@@ -156,6 +156,8 @@ client.on('messageCreate', async (message) => {
       await handleEditPity(message, args);
     } else if (command === 'sell' || command === 'vender') {
       await handleSell(message, args);
+    } else if (command === 'setcurrencyunb') {
+      await handleSetCurrencyUnb(message, args);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -2050,6 +2052,47 @@ async function handleSell(message, args) {
     
     return message.reply('❌ Ocurrió un error al procesar la venta. Verifica que UnbelievaBoat esté configurado correctamente en el servidor.');
   }
+}
+
+async function handleSetCurrencyUnb(message, args) {
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden usar este comando.');
+  }
+
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  if (args.length === 0) {
+    const currentSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+    if (currentSymbol) {
+      return message.reply(`💰 Emoji de moneda actual: **${currentSymbol}**\n\nPara cambiarlo usa: \`*setcurrencyunb <emoji>\`\nPara usar el de UnbelievaBoat: \`*setcurrencyunb reset\``);
+    } else {
+      return message.reply(`💰 Usando el emoji de moneda por defecto de UnbelievaBoat.\n\nPara configurar uno personalizado: \`*setcurrencyunb <emoji>\`\nEjemplo: \`*setcurrencyunb 💎\``);
+    }
+  }
+
+  if (args[0].toLowerCase() === 'reset' || args[0].toLowerCase() === 'default') {
+    await storage.setConfig(guildId, 'custom_currency_symbol', null);
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF00)
+      .setTitle('✅ Emoji Reseteado')
+      .setDescription('Ahora se usará el emoji de moneda por defecto de UnbelievaBoat.');
+    return message.reply({ embeds: [embed] });
+  }
+
+  const newSymbol = args.join(' ');
+
+  await storage.setConfig(guildId, 'custom_currency_symbol', newSymbol);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF00)
+    .setTitle('✅ Emoji de Moneda Configurado')
+    .setDescription(`El emoji de moneda se ha actualizado a: **${newSymbol}**`)
+    .addFields(
+      { name: 'Ejemplo', value: `Se ha vendido por 1000${newSymbol}`, inline: false }
+    );
+
+  await message.reply({ embeds: [embed] });
 }
 
 async function handleResetCollectable(message, args) {
