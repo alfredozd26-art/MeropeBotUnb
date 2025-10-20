@@ -1,4 +1,4 @@
-(const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, PermissionFlagsBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, PermissionFlagsBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const dotenv = require('dotenv');
 const storage = require('./server/storage');
 const { searchItemByPartialName, searchItemByPartialNameSync } = require('./utils/itemSearch');
