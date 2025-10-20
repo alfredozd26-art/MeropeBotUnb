@@ -6,7 +6,7 @@ const { Client: UnbClient } = require('unb-api');
 
 dotenv.config();
 
-const unbClient = new UnbClient(process.env.UNBELIEVABOAT_TOKEN);
+const unbClient = new UnbClient(process.env.UNABOAT_TOKEN);
 
 const client = new Client({
   intents: [
@@ -223,7 +223,7 @@ async function handleGirar(message) {
       console.log(`✅ Ticket "${ticketRoleToRemove.name}" removido (con delay de 1s)`);
     } catch (error) {
       console.error(`❌ Error al remover ticket "${ticketRoleToRemove.name}":`, error.message);
-      
+
       if (error.code === 50001) {
         const warningEmbed = new EmbedBuilder()
           .setColor(0xFFA500)
@@ -321,7 +321,7 @@ async function handleGirar(message) {
       embed.setImage(replyToUse);
     }
 
-    await message.reply({ embeds: [embed] });
+    await message.channel.send({ embeds: [embed] });
   } else {
     const rarityStars = storage.getRarityStars(item.rarity);
 
@@ -352,7 +352,7 @@ async function handleGirar(message) {
       embed.setImage(replyToUse);
     }
 
-    await message.reply({ embeds: [embed] });
+    await message.channel.send({ embeds: [embed] });
 
     if (item.roleGiven) {
       const shouldGiveRole = !isCollectable || currentCount >= item.collectable;
@@ -424,7 +424,7 @@ async function handleGirar10(message) {
       console.log(`✅ Ticket x10 "${ticketRoleToRemove.name}" removido (con delay de 1s)`);
     } catch (error) {
       console.error(`❌ Error al remover ticket x10:`, error.message);
-      
+
       if (error.code === 50001) {
         const warningEmbed = new EmbedBuilder()
           .setColor(0xFFA500)
@@ -804,7 +804,7 @@ async function handleEditItem(message, args) {
   if (!message.channel.isSendable()) return;
 
   if (args.length < 2) {
-    return message.channel.send('❌ Uso: `*edititem <nombre> <campo> <valor...>`\n**Campos:** chance, rarity, reply, tokens, role-given, object, promo, secret, collectable, price\n\nEjemplos:\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @NombreRol`\n`*edititem Joker promo true`\n`*edititem Joker secret true`\n`*edititem "Cuerpo Santo" collectable 5`\n`*edititem Jack object persona`\n`*edititem Jack price 1000`');
+    return message.channel.send('❌ Uso: `*edititem <nombre> <campo> <valor...>`\n**Campos:** chance, rarity, reply, tokens, role-given, object, promo, secret, collectable, price\n\nEjemplos:\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given NombreRol`\n`*edititem Joker promo true`\n`*edititem Joker secret true`\n`*edititem "Cuerpo Santo" collectable 5`\n`*edititem Jack object persona`\n`*edititem Jack price 1000`');
   }
 
   let itemName;
@@ -856,7 +856,7 @@ async function handleEditItem(message, args) {
     await storage.updateItem(guildId, item.name, 'rarity', rarity);
 
     const embed = new EmbedBuilder()
-      .setColor(storage.getRarityColor(rarity))
+      .setColor(storage.RarityColor(rarity))
       .setTitle('✅ Rareza Actualizada')
       .setDescription(`La rareza del premio **${item.name}** ha sido actualizada.`)
       .addFields({ name: 'Nueva Rareza', value: storage.getRarityStars(rarity), inline: false });
@@ -983,10 +983,10 @@ async function handleEditItem(message, args) {
     }
 
     await storage.updateItem(guildId, item.name, 'price', price);
-    
+
     const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
     const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
-    
+
     return message.channel.send(`✅ El precio de venta de **${item.name}** ha sido configurado a **${price}${currencySymbol}** (por unidad).`);
 
   } else {
@@ -1224,9 +1224,12 @@ async function handleTokens(message) {
   if (Object.keys(tokens).length === 0) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
-      .setTitle(`${titleEmoji} Tokens de ${message.author.username}`)
-      .setDescription('No tienes ningún Token aún.\n\nObtén Tokens al conseguir premios duplicados en el gacha.');
-    // .setThumbnail(message.author.displayAvatarURL({ dynamic: true })) // Removed thumbnail
+      .setTitle(`${titleEmoji} Tokens`)
+      .setDescription('No tienes ningún Token aún.\n\nObtén Tokens al conseguir premios duplicados en el gacha.')
+      .setAuthor({
+        name: message.author.username,
+        iconURL: message.author.displayAvatarURL({ dynamic: true })
+      });
     return message.channel.send({ embeds: [embed] });
   }
 
@@ -1509,7 +1512,7 @@ async function handleFixHelp(message) {
       },
       {
         name: '⚙️ Comandos Admin - Editar Items (Parte 1)',
-        value: '**`*edititem <nombre> <campo> <valor>`**\n\n**Campos básicos:**\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @Rol`',
+        value: '**`*edititem <nombre> <campo> <valor>`**\n\n**Campos básicos:**\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @NombreRol`',
         inline: false
       },
       {
@@ -1970,7 +1973,7 @@ async function handleSell(message, args) {
   }
 
   const itemName = args.slice(0, args.length - 1).join(' ');
-  
+
   const allItems = await storage.getAllItems(guildId);
   const item = await searchItemByPartialName(allItems, itemName);
 
@@ -2016,14 +2019,14 @@ async function handleSell(message, args) {
         const filePath = require('path').join(__dirname, 'data', `${guildId}_collectables.json`);
         const fs = require('fs').promises;
         const data = JSON.parse(await fs.readFile(filePath, 'utf-8'));
-        
+
         if (!data[message.author.id]) data[message.author.id] = {};
         data[message.author.id][item.name] = (data[message.author.id][item.name] || 0) - 1;
-        
+
         if (data[message.author.id][item.name] <= 0) {
           delete data[message.author.id][item.name];
         }
-        
+
         await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
       }
     }
@@ -2045,11 +2048,11 @@ async function handleSell(message, args) {
 
   } catch (error) {
     console.error('Error al vender item:', error);
-    
+
     if (error.response?.status === 403) {
       return message.reply('❌ El bot no tiene permisos para gestionar la economía de UnbelievaBoat en este servidor.\n\nAsegúrate de que la aplicación esté autorizada en: https://unbelievaboat.com/applications');
     }
-    
+
     return message.reply('❌ Ocurrió un error al procesar la venta. Verifica que UnbelievaBoat esté configurado correctamente en el servidor.');
   }
 }
@@ -2232,7 +2235,7 @@ async function handleGirarSlash(interaction) {
       console.log(`✅ Ticket "${ticketRoleToRemove.name}" removido (con delay de 1s) [slash]`);
     } catch (error) {
       console.error(`❌ Error al remover ticket "${ticketRoleToRemove.name}":`, error.message);
-      
+
       if (error.code === 50001) {
         const warningEmbed = new EmbedBuilder()
           .setColor(0xFFA500)
@@ -2257,7 +2260,7 @@ async function handleGirarSlash(interaction) {
 
   if (gifToShow) {
     const pullTimer = await storage.getConfig(guildId, 'pull_timer') || DEFAULT_PULL_TIMER;
-    
+
     const loadingEmbed = new EmbedBuilder()
       .setColor(0xFFD700)
       .setTitle('🌟 Realizando tirada...')
@@ -2439,7 +2442,7 @@ async function handleGirar10Slash(interaction) {
       console.log(`✅ Ticket x10 "${ticketRoleToRemove.name}" removido (con delay de 1s) [slash]`);
     } catch (error) {
       console.error(`❌ Error al remover ticket x10:`, error.message);
-      
+
       if (error.code === 50001) {
         const warningEmbed = new EmbedBuilder()
           .setColor(0xFFA500)
