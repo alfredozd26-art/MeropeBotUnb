@@ -6,7 +6,7 @@ const { Client: UnbClient } = require('unb-api');
 
 dotenv.config();
 
-const unbClient = new UnbClient(process.env.UNABOAT_TOKEN);
+const unbClient = new UnbClient(process.env.UNBELIEVABOAT_TOKEN);
 
 const client = new Client({
   intents: [
@@ -1876,9 +1876,13 @@ async function handlePityInfo(message) {
       { name: 'Próximo SSR garantizado en', value: `${pityMax - pityData.counter} tiradas`, inline: true },
       { name: 'Sistema 50/50', value: fiftyFiftyStatus, inline: false }
     )
-    .setFooter({ text: 'El pity se resetea al obtener un SSR. Si pierdes el 50/50 (obtienes estándar), el próximo SSR será promocional garantizado.' });
+    .setFooter({ text: 'El pity se resetea al obtener un SSR. Si pierdes el 50/50 (obtienes estándar), el próximo SSR será promocional garantizado.' })
+    .setAuthor({
+      name: message.author.username,
+      iconURL: message.author.displayAvatarURL({ dynamic: true })
+    });
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleSetCurrency(message, args) {
@@ -1916,13 +1920,17 @@ async function handleInventory(message) {
   });
 
   if (personasAndObjects.length === 0) {
-    return message.reply('❌ No hay personas u objetos configurados en el gacha.');
+    return message.channel.send('❌ No hay personas u objetos configurados en el gacha.');
   }
 
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle ('Tu Inventario')
-    .setDescription(`${message.author.username}, aquí están tus personas y objetos coleccionables:`);
+    .setTitle('Tu Inventario')
+    .setDescription(`Aquí están tus personas y objetos coleccionables:`)
+    .setAuthor({
+      name: message.author.username,
+      iconURL: message.author.displayAvatarURL({ dynamic: true })
+    });
 
   let hasAnyItem = false;
 
@@ -1956,7 +1964,7 @@ async function handleInventory(message) {
     embed.setDescription('No tienes ninguna persona u objeto en tu inventario aún.\n\nObtén items haciendo spins en el gacha.');
   }
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleSell(message, args) {
