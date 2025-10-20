@@ -1980,16 +1980,16 @@ async function handleSell(message, args) {
 
   const objectType = (item.objectType || 'personaje').toLowerCase();
   if (objectType === 'personaje') {
-    return message.reply(`❌ **${item.name}** es un personaje. Solo puedes vender **personas** y **objetos**.\n\nPara cambiar el tipo de este item, un administrador debe usar:\n\`*edititem ${item.name} object persona\``);
+    return;
   }
 
   if (objectType !== 'persona' && objectType !== 'objeto' && objectType !== 'object') {
-    return message.reply(`❌ **${item.name}** no es vendible. Solo puedes vender personas y objetos.`);
+    return;
   }
 
   const price = item.price || 0;
   if (price === 0) {
-    return message.reply(`❌ **${item.name}** no tiene precio configurado.\n\nUn administrador debe configurarlo primero con:\n\`*edititem ${item.name} price <cantidad>\``);
+    return;
   }
 
   const collectables = await storage.getUserCollectables(guildId, message.author.id);
@@ -2036,9 +2036,9 @@ async function handleSell(message, args) {
       .addFields(
         { name: 'Item', value: `${rarityStars} ${item.name}`, inline: true },
         { name: 'Cantidad', value: `${quantity}`, inline: true },
-        { name: 'Total Recibido', value: `${totalPrice}${currencySymbol}`, inline: true }
-      )
-      .setFooter({ text: `Precio unitario: ${price}${currencySymbol}` });
+        { name: 'Total Recibido', value: `${totalPrice}${currencySymbol}`, inline: true },
+        { name: 'Precio Unitario', value: `${price}${currencySymbol}`, inline: true }
+      );
 
     await message.reply({ embeds: [embed] });
     console.log(`✅ ${message.author.tag} vendió ${quantity}x ${item.name} por ${totalPrice}${currencySymbol}`);
