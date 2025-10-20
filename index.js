@@ -573,10 +573,11 @@ async function handleBanner(message) {
   const items = allItems.filter(item => !item.secret);
 
   if (items.length === 0) {
-    if (message.channel.isSendable()) {
-      return message.channel.send('❌ No hay premios configurados en el gacha.');
-    }
-    return;
+    const embed = new EmbedBuilder()
+      .setColor(0xFF0000)
+      .setTitle('❌ Gacha Vacío')
+      .setDescription('No hay premios configurados en el gacha aún.\n\nLos administradores pueden crear premios con `*createitem`');
+    return message.channel.send({ embeds: [embed] });
   }
 
   const totalChance = items.reduce((sum, item) => sum + item.chance, 0);
@@ -652,11 +653,11 @@ async function handleBanner(message) {
 
 async function handleCreateItem(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*createitem <nombre con espacios>`\n\nEjemplo: `*createitem Joker Premium`\n\nDespués configura con `*edititem` los campos: chance, rarity, reply, tokens, role-given, object, promo');
+    return message.channel.send('❌ Uso: `*createitem <nombre con espacios>`\n\nEjemplo: `*createitem Joker Premium`\n\nDespués configura con `*edititem` los campos: chance, rarity, reply, tokens, role-given, object, promo');
   }
 
   const name = args.join(' ');
@@ -683,11 +684,11 @@ async function handleCreateItem(message, args) {
 
 async function handleCreateItemSecret(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*createitemsecret <nombre con espacios>`\n\nEjemplo: `*createitemsecret Johnny Secreto`\n\nDespués configura con `*edititem` los campos: chance, rarity, reply, tokens, role-given, object, promo');
+    return message.channel.send('❌ Uso: `*createitemsecret <nombre con espacios>`\n\nEjemplo: `*createitemsecret Johnny Secreto`\n\nDespués configura con `*edititem` los campos: chance, rarity, reply, tokens, role-given, object, promo');
   }
 
   const name = args.join(' ');
@@ -716,7 +717,7 @@ async function handleCreateItemSecret(message, args) {
 
 async function handleSecretBanner(message) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   const guildId = message.guild?.id;
@@ -726,7 +727,7 @@ async function handleSecretBanner(message) {
   const secretItems = allItems.filter(item => item.secret);
 
   if (secretItems.length === 0) {
-    return message.reply('❌ No hay personajes secretos configurados.');
+    return message.channel.send('❌ No hay personajes secretos configurados.');
   }
 
   const totalChance = secretItems.reduce((sum, item) => sum + item.chance, 0);
@@ -1073,7 +1074,7 @@ async function handleResetItems(message) {
 
 async function handleItemInfo(message, args) {
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*iteminfo <nombre del premio>`');
+    return message.channel.send('❌ Uso: `*iteminfo <nombre del premio>`');
   }
 
   const itemName = args.join(' ');
@@ -1084,12 +1085,12 @@ async function handleItemInfo(message, args) {
   const item = await searchItemByPartialName(allItems, itemName);
 
   if (!item) {
-    return message.reply(`❌ No se encontró el premio **${itemName}**.`);
+    return message.channel.send(`❌ No se encontró el premio **${itemName}**.`);
   }
 
   // Proteger items secretos para usuarios sin permisos de admin
   if (item.secret && !message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply(`❌ No se encontró el premio **${itemName}**.`);
+    return message.channel.send(`❌ No se encontró el premio **${itemName}**.`);
   }
 
   const embed = new EmbedBuilder()
@@ -1137,12 +1138,12 @@ async function handleItemInfo(message, args) {
     }
   }
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleExchange(message, args) {
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*canjear <ID del canje>`\n\nUsa `*listexchanges` para ver los canjes disponibles.');
+    return message.channel.send('❌ Uso: `*canjear <ID del canje>`\n\nUsa `*listexchanges` para ver los canjes disponibles.');
   }
 
   const exchangeId = args[0];
@@ -1153,7 +1154,7 @@ async function handleExchange(message, args) {
   const exchange = exchanges.find(e => e.id === exchangeId);
 
   if (!exchange) {
-    return message.reply(`❌ No existe un canje con ID **${exchangeId}**.\n\nUsa \`*listexchanges\` para ver los canjes disponibles.`);
+    return message.channel.send(`❌ No existe un canje con ID **${exchangeId}**.\n\nUsa \`*listexchanges\` para ver los canjes disponibles.`);
   }
 
   const userTokens = await storage.getUserTokens(guildId, message.author.id);
@@ -1172,7 +1173,7 @@ async function handleExchange(message, args) {
   const priceDisplay = (await Promise.all(priceDisplayPromises)).join(', ');
 
   if (!canAfford) {
-    return message.reply(`❌ No tienes suficientes Tokens para este canje.\n\n**Requiere:** ${priceDisplay}\n\nUsa \`*tokens\` para ver tus Tokens actuales.`);
+    return message.channel.send(`❌ No tienes suficientes Tokens para este canje.\n\n**Requiere:** ${priceDisplay}\n\nUsa \`*tokens\` para ver tus Tokens actuales.`);
   }
 
   for (const [rarity, amount] of Object.entries(exchange.prices)) {
@@ -1211,7 +1212,7 @@ async function handleExchange(message, args) {
       { name: 'Tokens Gastados', value: priceDisplay, inline: false }
     );
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleTokens(message) {
@@ -1292,7 +1293,7 @@ async function handleListExchanges(message) {
   const exchanges = await storage.getExchangeRules(guildId);
 
   if (exchanges.length === 0) {
-    return message.reply('❌ No hay canjes configurados. Los administradores pueden crear uno con `*createexchange`.');
+    return message.channel.send('❌ No hay canjes configurados. Los administradores pueden crear uno con `*createexchange`.');
   }
 
   const embed = new EmbedBuilder()
@@ -1312,16 +1313,16 @@ async function handleListExchanges(message) {
     });
   }
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleSetTicketRole(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*setticketrole <nombre del rol o @mención>`');
+    return message.channel.send('❌ Uso: `*setticketrole <nombre del rol o @mención>`');
   }
 
   const roleName = args.join(' ');
@@ -1334,16 +1335,16 @@ async function handleSetTicketRole(message, args) {
     .setTitle('✅ Rol de Ticket Configurado')
     .setDescription(`El rol de ticket para \`*spin\` ha sido configurado a: **${roleName}**`);
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleSetTicketRole10(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*setticketrole10 <nombre del rol o @mención>`');
+    return message.channel.send('❌ Uso: `*setticketrole10 <nombre del rol o @mención>`');
   }
 
   const roleName = args.join(' ');
@@ -1356,23 +1357,23 @@ async function handleSetTicketRole10(message, args) {
     .setTitle('✅ Rol de Ticket x10 Configurado')
     .setDescription(`El rol de ticket para \`*spin10\` ha sido configurado a: **${roleName}**`);
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleEditPull(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length === 0) {
-    return message.reply('❌ Uso: `*editpull <URL del GIF>`\nO `*editpull remove` para quitar el GIF');
+    return message.channel.send('❌ Uso: `*editpull <URL del GIF>`\nO `*editpull remove` para quitar el GIF');
   }
   const guildId = message.guild?.id;
   if (!guildId) return;
 
   if (args[0].toLowerCase() === 'remove') {
     await storage.setConfig(guildId, 'pity_gif', null);
-    return message.reply('✅ GIF de tirada removido.');
+    return message.channel.send('✅ GIF de tirada removido.');
   }
 
   const gifUrl = args[0];
@@ -1384,23 +1385,23 @@ async function handleEditPull(message, args) {
     .setDescription('El GIF que aparecerá al hacer una tirada ha sido actualizado.')
     .setImage(gifUrl);
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleEditPullSSR(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length === 0) {
-    return message.reply('❌ Uso: `*editpullssr <URL del GIF>`\nO `*editpullssr remove` para quitar el GIF');
+    return message.channel.send('❌ Uso: `*editpullssr <URL del GIF>`\nO `*editpullssr remove` para quitar el GIF');
   }
   const guildId = message.guild?.id;
   if (!guildId) return;
 
   if (args[0].toLowerCase() === 'remove') {
     await storage.setConfig(guildId, 'ssr_gif', null);
-    return message.reply('✅ GIF de SSR/Promocional removido.');
+    return message.channel.send('✅ GIF de SSR/Promocional removido.');
   }
 
   const gifUrl = args[0];
@@ -1412,12 +1413,12 @@ async function handleEditPullSSR(message, args) {
     .setDescription('El GIF que aparecerá al sacar un SSR o promocional ha sido actualizado.')
     .setImage(gifUrl);
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleEditPullTimer(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   const guildId = message.guild?.id;
@@ -1425,7 +1426,7 @@ async function handleEditPullTimer(message, args) {
 
   if (args.length === 0) {
     const currentTimer = await storage.getConfig(guildId, 'pull_timer') || DEFAULT_PULL_TIMER;
-    return message.reply(`⏱️ Timer actual: **${currentTimer}ms** (${(currentTimer/1000).toFixed(1)}s)\n\nPara cambiarlo usa: \`*editpulltimer <milisegundos>\`\nEjemplo: \`*editpulltimer 5000\` (5 segundos)`);
+    return message.channel.send(`⏱️ Timer actual: **${currentTimer}ms** (${(currentTimer/1000).toFixed(1)}s)\n\nPara cambiarlo usa: \`*editpulltimer <milisegundos>\`\nEjemplo: \`*editpulltimer 5000\` (5 segundos)`);
   }
 
   if (args[0].toLowerCase() === 'reset' || args[0].toLowerCase() === 'default') {
@@ -1434,13 +1435,13 @@ async function handleEditPullTimer(message, args) {
       .setColor(0x00FF00)
       .setTitle('✅ Timer de Tirada Reseteado')
       .setDescription(`El timer ha sido reseteado al valor por defecto: **${DEFAULT_PULL_TIMER}ms** (${(DEFAULT_PULL_TIMER/1000).toFixed(1)}s)`);
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
   const timer = parseInt(args[0]);
 
   if (isNaN(timer) || timer < 1000 || timer > 60000) {
-    return message.reply('❌ El timer debe ser un número entre 1000 y 60000 milisegundos (1-60 segundos).\n\nEjemplo: `*editpulltimer 5000` para 5 segundos');
+    return message.channel.send('❌ El timer debe ser un número entre 1000 y 60000 milisegundos (1-60 segundos).\n\nEjemplo: `*editpulltimer 5000` para 5 segundos');
   }
 
   await storage.setConfig(guildId, 'pull_timer', timer);
@@ -1453,7 +1454,7 @@ async function handleEditPullTimer(message, args) {
       { name: 'Nota', value: 'Este timer se aplicará tanto para tiradas normales (*spin) como para tiradas x10 (*spin10)', inline: false }
     );
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleHelp(message) {
@@ -1650,11 +1651,11 @@ async function handleEditExchange(message, args) {
 
 async function handleAddTokens(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 2) {
-    return message.reply('❌ Uso: `*addtokens <@usuario> <cantidad><rareza>`\n\nEjemplos:\n`*addtokens @Juan 5SSR`\n`*addtokens @Maria 10R`');
+    return message.channel.send('❌ Uso: `*addtokens <@usuario> <cantidad><rareza>`\n\nEjemplos:\n`*addtokens @Juan 5SSR`\n`*addtokens @Maria 10R`');
   }
 
   const userMention = args[0];
@@ -1662,14 +1663,14 @@ async function handleAddTokens(message, args) {
   const userId = userIdMatch ? userIdMatch[1] : null;
 
   if (!userId) {
-    return message.reply('❌ Debes mencionar a un usuario válido.\nEjemplo: `*addtokens @Juan 5SSR`');
+    return message.channel.send('❌ Debes mencionar a un usuario válido.\nEjemplo: `*addtokens @Juan 5SSR`');
   }
 
   const tokenArg = args[1];
   const match = tokenArg.match(/^(\d+)(R|UR|SR|SSR)$/i);
 
   if (!match) {
-    return message.reply('❌ Formato inválido. Usa: `<cantidad><rareza>`\nEjemplos: 5SSR, 10R, 3SR');
+    return message.channel.send('❌ Formato inválido. Usa: `<cantidad><rareza>`\nEjemplos: 5SSR, 10R, 3SR');
   }
 
   const amount = parseInt(match[1]);
@@ -1693,11 +1694,11 @@ async function handleAddTokens(message, args) {
 
 async function handleRemoveTokens(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 2) {
-    return message.reply('❌ Uso: `*removetokens <@usuario> <cantidad><rareza>`\n\nEjemplos:\n`*removetokens @Juan 5SSR`\n`*removetokens @Maria 10R`');
+    return message.channel.send('❌ Uso: `*removetokens <@usuario> <cantidad><rareza>`\n\nEjemplos:\n`*removetokens @Juan 5SSR`\n`*removetokens @Maria 10R`');
   }
 
   const userMention = args[0];
@@ -1705,14 +1706,14 @@ async function handleRemoveTokens(message, args) {
   const userId = userIdMatch ? userIdMatch[1] : null;
 
   if (!userId) {
-    return message.reply('❌ Debes mencionar a un usuario válido.\nEjemplo: `*removetokens @Juan 5SSR`');
+    return message.channel.send('❌ Debes mencionar a un usuario válido.\nEjemplo: `*removetokens @Juan 5SSR`');
   }
 
   const tokenArg = args[1];
   const match = tokenArg.match(/^(\d+)(R|UR|SR|SSR)$/i);
 
   if (!match) {
-    return message.reply('❌ Formato inválido. Usa: `<cantidad><rareza>`\nEjemplos: 5SSR, 10R, 3SR');
+    return message.channel.send('❌ Formato inválido. Usa: `<cantidad><rareza>`\nEjemplos: 5SSR, 10R, 3SR');
   }
 
   const amount = parseInt(match[1]);
@@ -1741,7 +1742,7 @@ async function handleRemoveTokens(message, args) {
 
 async function handleResetTokens(message) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (!message.channel.isSendable()) return;
@@ -1792,7 +1793,7 @@ async function handleConfirm(message) {
       .setTitle('✅ Premio Eliminado')
       .setDescription(`El premio **${confirmation.data.itemName}** ha sido eliminado del gacha.`);
 
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
   if (pendingConfirmations.has(confirmationKey2)) {
@@ -1807,7 +1808,7 @@ async function handleConfirm(message) {
       .setTitle('🗑️ Todos los Premios Eliminados')
       .setDescription('Se han eliminado todos los premios del gacha y todos los inventarios de usuarios.\n\n✅ Ahora puedes crear nuevos premios desde cero.');
 
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
   if (pendingConfirmations.has(confirmationKey3)) {
@@ -1822,10 +1823,10 @@ async function handleConfirm(message) {
       .setTitle('🗑️ Todos los Tokens Reseteados')
       .setDescription('Se han eliminado todos los tokens de todos los usuarios.\n\n✅ Los tokens comenzarán desde cero.');
 
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
-  return message.reply('❌ No tienes ninguna confirmación pendiente.');
+  return message.channel.send('❌ No tienes ninguna confirmación pendiente.');
 }
 
 async function handleCancel(message) {
@@ -1837,24 +1838,24 @@ async function handleCancel(message) {
     const confirmation = pendingConfirmations.get(confirmationKey);
     clearTimeout(confirmation.timeout);
     pendingConfirmations.delete(confirmationKey);
-    return message.reply('❌ Eliminación de premio cancelada.');
+    return message.channel.send('❌ Eliminación de premio cancelada.');
   }
 
   if (pendingConfirmations.has(confirmationKey2)) {
     const confirmation = pendingConfirmations.get(confirmationKey2);
     clearTimeout(confirmation.timeout);
     pendingConfirmations.delete(confirmationKey2);
-    return message.reply('❌ Reseteo de premios cancelado.');
+    return message.channel.send('❌ Reseteo de premios cancelado.');
   }
 
   if (pendingConfirmations.has(confirmationKey3)) {
     const confirmation = pendingConfirmations.get(confirmationKey3);
     clearTimeout(confirmation.timeout);
     pendingConfirmations.delete(confirmationKey3);
-    return message.reply('❌ Reseteo de tokens cancelado.');
+    return message.channel.send('❌ Reseteo de tokens cancelado.');
   }
 
-  return message.reply('❌ No tienes ninguna confirmación pendiente para cancelar.');
+  return message.channel.send('❌ No tienes ninguna confirmación pendiente para cancelar.');
 }
 
 async function handlePityInfo(message) {
@@ -1887,11 +1888,11 @@ async function handlePityInfo(message) {
 
 async function handleSetCurrency(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 1) {
-    return message.reply('❌ Uso: `*setcurrency <emoji>`\n\nEjemplo: `*setcurrency 💰` o `*setcurrency <:SSRTK:1425246335472369857>`');
+    return message.channel.send('❌ Uso: `*setcurrency <emoji>`\n\nEjemplo: `*setcurrency 💰` o `*setcurrency <:SSRTK:1425246335472369857>`');
   }
 
   const emoji = args.join(' ');
@@ -1904,7 +1905,7 @@ async function handleSetCurrency(message, args) {
     .setTitle('✅ Emoji de Tokens Configurado')
     .setDescription(`El emoji de tokens ha sido configurado a: ${emoji}\n\nAhora aparecerá en el título de \`*bal\` y \`*tokens\`\n\nPrueba con \`*tokens\` para ver el cambio.`);
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleInventory(message) {
@@ -1972,12 +1973,12 @@ async function handleSell(message, args) {
   if (!guildId) return;
 
   if (args.length < 2) {
-    return message.reply('❌ Uso: `*sell <nombre> <cantidad>`\n\nEjemplo: `*sell Jack 5`\n\n**Nota:** Solo puedes vender personas y objetos, NO personajes.');
+    return;
   }
 
   const quantity = parseInt(args[args.length - 1]);
   if (isNaN(quantity) || quantity <= 0) {
-    return message.reply('❌ La cantidad debe ser un número mayor a 0.');
+    return;
   }
 
   const itemName = args.slice(0, args.length - 1).join(' ');
@@ -2007,7 +2008,7 @@ async function handleSell(message, args) {
   const currentCount = collectables[item.name] || 0;
 
   if (currentCount < quantity) {
-    return message.reply(`❌ No tienes suficientes **${item.name}**.\n\n**Tienes:** ${currentCount}\n**Necesitas:** ${quantity}`);
+    return;
   }
 
   const totalPrice = price * quantity;
@@ -2040,6 +2041,8 @@ async function handleSell(message, args) {
     }
 
     const rarityStars = storage.getRarityStars(item.rarity);
+    const formattedTotal = totalPrice.toLocaleString('en-US');
+    const formattedPrice = price.toLocaleString('en-US');
     const embed = new EmbedBuilder()
       .setColor(0x57F287)
       .setTitle('💰 Venta Exitosa')
@@ -2047,27 +2050,27 @@ async function handleSell(message, args) {
       .addFields(
         { name: 'Item', value: `${rarityStars} ${item.name}`, inline: true },
         { name: 'Cantidad', value: `${quantity}`, inline: true },
-        { name: 'Total Recibido', value: `${totalPrice}${currencySymbol}`, inline: true },
-        { name: 'Precio Unitario', value: `${price}${currencySymbol}`, inline: true }
+        { name: 'Total Recibido', value: `${currencySymbol} ${formattedTotal}`, inline: true },
+        { name: 'Precio Unitario', value: `${currencySymbol} ${formattedPrice}`, inline: true }
       );
 
-    await message.reply({ embeds: [embed] });
-    console.log(`✅ ${message.author.tag} vendió ${quantity}x ${item.name} por ${totalPrice}${currencySymbol}`);
+    await message.channel.send({ embeds: [embed] });
+    console.log(`✅ ${message.author.tag} vendió ${quantity}x ${item.name} por ${currencySymbol} ${formattedTotal}`);
 
   } catch (error) {
     console.error('Error al vender item:', error);
 
     if (error.response?.status === 403) {
-      return message.reply('❌ El bot no tiene permisos para gestionar la economía de UnbelievaBoat en este servidor.\n\nAsegúrate de que la aplicación esté autorizada en: https://unbelievaboat.com/applications');
+      return message.channel.send('❌ El bot no tiene permisos para gestionar la economía de UnbelievaBoat en este servidor.\n\nAsegúrate de que la aplicación esté autorizada en: https://unbelievaboat.com/applications');
     }
 
-    return message.reply('❌ Ocurrió un error al procesar la venta. Verifica que UnbelievaBoat esté configurado correctamente en el servidor.');
+    return message.channel.send('❌ Ocurrió un error al procesar la venta. Verifica que UnbelievaBoat esté configurado correctamente en el servidor.');
   }
 }
 
 async function handleSetCurrencyUnb(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   const guildId = message.guild?.id;
@@ -2076,9 +2079,9 @@ async function handleSetCurrencyUnb(message, args) {
   if (args.length === 0) {
     const currentSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
     if (currentSymbol) {
-      return message.reply(`💰 Emoji de moneda actual: **${currentSymbol}**\n\nPara cambiarlo usa: \`*setcurrencyunb <emoji>\`\nPara usar el de UnbelievaBoat: \`*setcurrencyunb reset\``);
+      return message.channel.send(`💰 Emoji de moneda actual: **${currentSymbol}**\n\nPara cambiarlo usa: \`*setcurrencyunb <emoji>\`\nPara usar el de UnbelievaBoat: \`*setcurrencyunb reset\``);
     } else {
-      return message.reply(`💰 Usando el emoji de moneda por defecto de UnbelievaBoat.\n\nPara configurar uno personalizado: \`*setcurrencyunb <emoji>\`\nEjemplo: \`*setcurrencyunb 💎\``);
+      return message.channel.send(`💰 Usando el emoji de moneda por defecto de UnbelievaBoat.\n\nPara configurar uno personalizado: \`*setcurrencyunb <emoji>\`\nEjemplo: \`*setcurrencyunb 💎\``);
     }
   }
 
@@ -2088,7 +2091,7 @@ async function handleSetCurrencyUnb(message, args) {
       .setColor(0x00FF00)
       .setTitle('✅ Emoji Reseteado')
       .setDescription('Ahora se usará el emoji de moneda por defecto de UnbelievaBoat.');
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
   const newSymbol = args.join(' ');
@@ -2100,19 +2103,19 @@ async function handleSetCurrencyUnb(message, args) {
     .setTitle('✅ Emoji de Moneda Configurado')
     .setDescription(`El emoji de moneda se ha actualizado a: **${newSymbol}**`)
     .addFields(
-      { name: 'Ejemplo', value: `Se ha vendido por 1000${newSymbol}`, inline: false }
+      { name: 'Ejemplo', value: `${newSymbol} 1,000`, inline: false }
     );
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleResetCollectable(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 2) {
-    return message.reply('❌ Uso: `*resetcollectable <nombre_item> <@usuario>`\n\nEjemplo: `*resetcollectable Cuerpo santo @Juan`');
+    return message.channel.send('❌ Uso: `*resetcollectable <nombre_item> <@usuario>`\n\nEjemplo: `*resetcollectable Cuerpo santo @Juan`');
   }
 
   const userMention = args[args.length - 1];
@@ -2130,7 +2133,7 @@ async function handleResetCollectable(message, args) {
   const allItems = await storage.getAllItems(guildId);
   const item = await searchItemByPartialName(allItems, itemName);
   if (!item) {
-    return message.reply(`❌ No se encontró el item **${itemName}**.`);
+    return message.channel.send(`❌ No se encontró el item **${itemName}**.`);
   }
 
   await storage.resetCollectable(guildId, userId, item.name);
@@ -2146,7 +2149,7 @@ async function handleResetCollectable(message, args) {
 
 async function handleEditPity(message, args) {
   if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply('❌ Solo administradores pueden usar este comando.');
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
   }
 
   const guildId = message.guild?.id;
@@ -2154,7 +2157,7 @@ async function handleEditPity(message, args) {
 
   if (args.length === 0) {
     const currentPity = await storage.getConfig(guildId, 'pity_max') || 90;
-    return message.reply(`⏱️ Pity actual: **${currentPity}** tiradas\n\nPara cambiarlo usa: \`*editpity <número>\`\nEjemplo: \`*editpity 100\` (el pity será a las 100 tiradas)`);
+    return message.channel.send(`⏱️ Pity actual: **${currentPity}** tiradas\n\nPara cambiarlo usa: \`*editpity <número>\`\nEjemplo: \`*editpity 100\` (el pity será a las 100 tiradas)`);
   }
 
   if (args[0].toLowerCase() === 'reset' || args[0].toLowerCase() === 'default') {
@@ -2163,13 +2166,13 @@ async function handleEditPity(message, args) {
       .setColor(0x00FF00)
       .setTitle('✅ Pity Reseteado')
       .setDescription(`El pity ha sido reseteado al valor por defecto: **90 tiradas**`);
-    return message.reply({ embeds: [embed] });
+    return message.channel.send({ embeds: [embed] });
   }
 
   const pityMax = parseInt(args[0]);
 
   if (isNaN(pityMax) || pityMax < 1 || pityMax > 500) {
-    return message.reply('❌ El pity debe ser un número entre 1 y 500.\n\nEjemplo: `*editpity 100` para que el pity sea a las 100 tiradas');
+    return message.channel.send('❌ El pity debe ser un número entre 1 y 500.\n\nEjemplo: `*editpity 100` para que el pity sea a las 100 tiradas');
   }
 
   await storage.setConfig(guildId, 'pity_max', pityMax);
@@ -2182,7 +2185,7 @@ async function handleEditPity(message, args) {
       { name: 'Nota', value: 'Los usuarios recibirán un SSR garantizado al llegar a este número de tiradas sin obtener uno.', inline: false }
     );
 
-  await message.reply({ embeds: [embed] });
+  await message.channel.send({ embeds: [embed] });
 }
 
 async function handleGirarSlash(interaction) {
