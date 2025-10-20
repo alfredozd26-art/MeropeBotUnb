@@ -984,8 +984,8 @@ async function handleEditItem(message, args) {
 
     await storage.updateItem(guildId, item.name, 'price', price);
     
-    const guildInfo = await unbClient.getGuild(guildId).catch(() => null);
-    const currencySymbol = guildInfo?.currencySymbol || '💰';
+    const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+    const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
     
     return message.channel.send(`✅ El precio de venta de **${item.name}** ha sido configurado a **${price}${currencySymbol}** (por unidad).`);
 
@@ -1989,7 +1989,7 @@ async function handleSell(message, args) {
 
   const price = item.price || 0;
   if (price === 0) {
-    return message.reply(`❌ **${item.name}** no tiene precio configurado.\n\nUn administrador debe configurarlo primero:\n\`*edititem ${item.name} price <cantidad>\``);
+    return message.reply(`❌ **${item.name}** no tiene precio configurado.\n\nUn administrador debe configurarlo primero con:\n\`*edititem ${item.name} price <cantidad>\``);
   }
 
   const collectables = await storage.getUserCollectables(guildId, message.author.id);
@@ -2002,8 +2002,8 @@ async function handleSell(message, args) {
   const totalPrice = price * quantity;
 
   try {
-    const guildInfo = await unbClient.getGuild(guildId).catch(() => null);
-    const currencySymbol = guildInfo?.currencySymbol || '💰';
+    const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+    const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
 
     await unbClient.editUserBalance(guildId, message.author.id, {
       cash: totalPrice,
