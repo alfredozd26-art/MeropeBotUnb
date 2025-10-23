@@ -94,6 +94,8 @@ client.on('messageCreate', async (message) => {
       await handleGirar10(message);
     } else if (command === 'banner') {
       await handleBanner(message);
+    } else if (command === 'bannershop') {
+      await handleBannerShop(message);
     } else if (command === 'createitem') {
       await handleCreateItem(message, args);
     } else if (command === 'edititem') {
@@ -570,13 +572,17 @@ async function handleBanner(message) {
   if (!guildId) return;
   const allItems = await storage.getAllItems(guildId);
 
-  const items = allItems.filter(item => !item.secret);
+  const items = allItems.filter(item => {
+    if (item.secret) return false;
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    return objectType === 'personaje';
+  });
 
   if (items.length === 0) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
-      .setTitle('❌ Gacha Vacío')
-      .setDescription('No hay premios configurados en el gacha aún.\n\nLos administradores pueden crear premios con `*createitem`');
+      .setTitle('❌ Banner Vacío')
+      .setDescription('No hay personajes configurados en el gacha aún.\n\nLos administradores pueden crear personajes con `*createitem`');
     return message.channel.send({ embeds: [embed] });
   }
 
@@ -638,6 +644,97 @@ async function handleBanner(message) {
     });
 
     totalPercentageCheck += rarityTotal;
+
+    embed.addFields({
+      name: `${config.stars} ${config.name} (${rarityTotal.toFixed(2)}%)`,
+      value: rarityList || 'Sin items',
+      inline: false
+    });
+  });
+
+  if (message.channel.isSendable()) {
+    await message.channel.send({ embeds: [embed] });
+  }
+}
+
+async function handleBannerShop(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  const allItems = await storage.getAllItems(guildId);
+
+  const items = allItems.filter(item => {
+    if (item.secret) return false;
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    return objectType === 'persona' || objectType === 'objeto' || objectType === 'object';
+  });
+
+  if (items.length === 0) {
+    const embed = new EmbedBuilder()
+      .setColor(0xFF0000)
+      .setTitle('❌ Tienda Vacía')
+      .setDescription('No hay personas u objetos configurados en el gacha aún.\n\nLos administradores pueden crear items con `*createitem` y configurar su tipo con `*edititem <nombre> object persona`');
+    return message.channel.send({ embeds: [embed] });
+  }
+
+  const totalChance = items.reduce((sum, item) => sum + item.chance, 0);
+  const guild = message.guild;
+
+  const rarityOrder = ['SSR', 'SR', 'UR', 'R'];
+  const sortedItems = [...items].sort((a, b) => {
+    const rarityDiff = rarityOrder.indexOf(a.rarity.toUpperCase()) - rarityOrder.indexOf(b.rarity.toUpperCase());
+    if (rarityDiff !== 0) return rarityDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  const rarityConfig = {
+    'SSR': { stars: storage.getRarityStars('SSR'), name: await storage.getTokenEmoji('SSR'), color: 0xFFD700 },
+    'SR': { stars: storage.getRarityStars('SR'), name: await storage.getTokenEmoji('SR'), color: 0xA020F0 },
+    'UR': { stars: storage.getRarityStars('UR'), name: await storage.getTokenEmoji('UR'), color: 0x3498DB },
+    'R': { stars: storage.getRarityStars('R'), name: await storage.getTokenEmoji('R'), color: 0x2ECC71 }
+  };
+
+  const itemsByRarity = {
+    'SSR': [],
+    'SR': [],
+    'UR': [],
+    'R': []
+  };
+
+  sortedItems.forEach(item => {
+    const rarity = item.rarity.toUpperCase();
+    if (itemsByRarity[rarity]) {
+      itemsByRarity[rarity].push(item);
+    }
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setAuthor({
+      name: `${guild?.name || 'Server'} Banner`,
+      iconURL: guild?.iconURL() || undefined
+    })
+    .setTitle('<:dogsuke:1425324917854834708> Premios del Banner <:dogsuke:1425324917854834708>')
+    .setDescription('◆━━━━━━━━━✪━━━━━━━━━◆');
+
+  const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+  const currencySymbol = customSymbol || '💰';
+
+  rarityOrder.forEach(rarityKey => {
+    const itemsInRarity = itemsByRarity[rarityKey];
+    if (itemsInRarity.length === 0) return;
+
+    const config = rarityConfig[rarityKey];
+    let rarityList = '';
+    let rarityTotal = 0;
+
+    itemsInRarity.forEach((item) => {
+      const percentage = ((item.chance / totalChance) * 100).toFixed(2);
+      rarityTotal += parseFloat(percentage);
+      const promoMarker = item.promo ? '⭐' : '';
+      const price = item.price || 0;
+      const formattedPrice = price.toLocaleString('en-US');
+      rarityList += `${percentage}% — **${item.name}** ${promoMarker} | ${currencySymbol} ${formattedPrice}\n`;
+    });
 
     embed.addFields({
       name: `${config.stars} ${config.name} (${rarityTotal.toFixed(2)}%)`,
@@ -857,7 +954,7 @@ async function handleEditItem(message, args) {
     await storage.updateItem(guildId, item.name, 'rarity', rarity);
 
     const embed = new EmbedBuilder()
-      .setColor(storage.RarityColor(rarity))
+      .setColor(storage.getRarityColor(rarity))
       .setTitle('✅ Rareza Actualizada')
       .setDescription(`La rareza del premio **${item.name}** ha sido actualizada.`)
       .addFields({ name: 'Nueva Rareza', value: storage.getRarityStars(rarity), inline: false });
