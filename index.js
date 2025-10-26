@@ -94,8 +94,10 @@ client.on('messageCreate', async (message) => {
       await handleGirar10(message);
     } else if (command === 'banner') {
       await handleBanner(message);
-    } else if (command === 'bannershop') {
+    } else if (command === 'bannerc') {
       await handleBannerShop(message);
+    } else if (command === 'perfil' || command === 'profile') {
+      await handlePerfil(message);
     } else if (command === 'createitem') {
       await handleCreateItem(message, args);
     } else if (command === 'edititem') {
@@ -676,7 +678,9 @@ async function handleBannerShop(message) {
     return message.channel.send({ embeds: [embed] });
   }
 
-  const totalChance = items.reduce((sum, item) => sum + item.chance, 0);
+  // Calcular probabilidad con TODOS los items del pool (incluyendo personajes)
+  const allNonSecretItems = allItems.filter(item => !item.secret);
+  const totalChance = allNonSecretItems.reduce((sum, item) => sum + item.chance, 0);
   const guild = message.guild;
 
   const rarityOrder = ['SSR', 'SR', 'UR', 'R'];
@@ -717,7 +721,16 @@ async function handleBannerShop(message) {
     .setDescription('◆━━━━━━━━━✪━━━━━━━━━◆');
 
   const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
-  const currencySymbol = customSymbol || '💰';
+  let currencySymbol = customSymbol;
+  
+  if (!currencySymbol) {
+    try {
+      const guildData = await unbClient.getGuild(guildId);
+      currencySymbol = guildData.currencySymbol || '💰';
+    } catch (error) {
+      currencySymbol = '💰';
+    }
+  }
 
   rarityOrder.forEach(rarityKey => {
     const itemsInRarity = itemsByRarity[rarityKey];
@@ -2060,6 +2073,151 @@ async function handleInventory(message) {
 
   if (!hasAnyItem) {
     embed.setDescription('No tienes ninguna persona u objeto en tu inventario aún.\n\nObtén items haciendo spins en el gacha.');
+  }
+
+  await message.channel.send({ embeds: [embed] });
+}
+
+async function handlePerfil(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const allItems = await storage.getAllItems(guildId);
+  const member = message.member;
+  const pityData = await storage.getUserPity(guildId, message.author.id);
+  const pityMax = await storage.getConfig(guildId, 'pity_max') || 90;
+  const collectables = await storage.getUserCollectables(guildId, message.author.id);
+
+  // Filtrar personajes que el usuario tiene (por rol)
+  const personajes = [];
+  for (const item of allItems) {
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    if (objectType !== 'personaje') continue;
+
+    if (item.roleGiven) {
+      let roleToCheck = message.guild?.roles.cache.find((r) => r.name === item.roleGiven);
+
+      if (!roleToCheck) {
+        const roleMentionMatch = item.roleGiven?.match(/<@&(\d+)>/);
+        if (roleMentionMatch) {
+          roleToCheck = message.guild?.roles.cache.get(roleMentionMatch[1]);
+        }
+      }
+
+      if (!roleToCheck && item.roleGiven) {
+        roleToCheck = message.guild?.roles.cache.get(item.roleGiven);
+      }
+
+      if (roleToCheck && member.roles.cache.has(roleToCheck.id)) {
+        personajes.push(item);
+      }
+    }
+  }
+
+  // Ordenar personajes por rareza (SSR > SR > UR > R)
+  const rarityOrder = { 'SSR': 1, 'SR': 2, 'UR': 3, 'R': 4 };
+  personajes.sort((a, b) => {
+    const rarityDiff = (rarityOrder[a.rarity.toUpperCase()] || 999) - (rarityOrder[b.rarity.toUpperCase()] || 999);
+    if (rarityDiff !== 0) return rarityDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Filtrar personas/objetos que el usuario tiene en inventario
+  const personasObjetos = [];
+  for (const item of allItems) {
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    if (objectType !== 'persona' && objectType !== 'objeto' && objectType !== 'object') continue;
+
+    const count = collectables[item.name] || 0;
+    if (count > 0) {
+      personasObjetos.push(item);
+    }
+  }
+
+  // Ordenar personas/objetos por rareza
+  personasObjetos.sort((a, b) => {
+    const rarityDiff = (rarityOrder[a.rarity.toUpperCase()] || 999) - (rarityOrder[b.rarity.toUpperCase()] || 999);
+    if (rarityDiff !== 0) return rarityDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle(`📋 Perfil de ${message.author.username}`)
+    .setAuthor({
+      name: message.author.username,
+      iconURL: message.author.displayAvatarURL({ dynamic: true })
+    })
+    .addFields(
+      { name: '🎲 Tiradas desde último SSR', value: `${pityData.counter}/${pityMax}`, inline: true },
+      { name: '🎯 Sistema 50/50', value: pityData.guaranteedPromo ? 'Garantizado' : 'Activo', inline: true },
+      { name: '👥 Personajes Obtenidos', value: `${personajes.length}`, inline: true }
+    );
+
+  // Mostrar personajes
+  if (personajes.length > 0) {
+    let personajesList = '';
+    for (const item of personajes) {
+      const rarityStars = storage.getRarityStars(item.rarity);
+      const promoMarker = item.promo ? ' ⭐' : '';
+      personajesList += `${rarityStars} ${item.name}${promoMarker}\n`;
+    }
+
+    // Dividir en chunks si es muy largo
+    if (personajesList.length > 1024) {
+      const chunks = personajesList.match(/.{1,1020}/g) || [];
+      chunks.forEach((chunk, index) => {
+        embed.addFields({
+          name: index === 0 ? '🌟 Personajes' : '🌟 Personajes (cont.)',
+          value: chunk,
+          inline: false
+        });
+      });
+    } else {
+      embed.addFields({
+        name: '🌟 Personajes',
+        value: personajesList || 'Ninguno',
+        inline: false
+      });
+    }
+  } else {
+    embed.addFields({
+      name: '🌟 Personajes',
+      value: 'No tienes personajes aún',
+      inline: false
+    });
+  }
+
+  // Mostrar personas/objetos
+  if (personasObjetos.length > 0) {
+    let personasObjetosList = '';
+    for (const item of personasObjetos) {
+      const rarityStars = storage.getRarityStars(item.rarity);
+      personasObjetosList += `${rarityStars} ${item.name}\n`;
+    }
+
+    if (personasObjetosList.length > 1024) {
+      const chunks = personasObjetosList.match(/.{1,1020}/g) || [];
+      chunks.forEach((chunk, index) => {
+        embed.addFields({
+          name: index === 0 ? '🎒 Inventario' : '🎒 Inventario (cont.)',
+          value: chunk,
+          inline: false
+        });
+      });
+    } else {
+      embed.addFields({
+        name: '🎒 Inventario',
+        value: personasObjetosList,
+        inline: false
+      });
+    }
+  } else {
+    embed.addFields({
+      name: '🎒 Inventario',
+      value: 'No tienes personas u objetos',
+      inline: false
+    });
   }
 
   await message.channel.send({ embeds: [embed] });
