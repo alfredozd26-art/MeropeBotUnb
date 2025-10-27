@@ -1180,7 +1180,19 @@ async function handleResetItems(message) {
     pendingConfirmations.delete(confirmationKey);
   }, 30000);
 
+  pendingConfirmations.set(confirmationKey, {
+    command: 'resetitems',
+    data: {},
+    timeout
+  });
 
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('⚠️ Confirmación Requerida')
+    .setDescription(`¿Estás seguro de que quieres **ELIMINAR TODOS LOS PREMIOS** del gacha?\n\nEsto también eliminará todos los inventarios de usuarios.\n\nEsta acción no se puede deshacer.\n\nEscribe \`*confirmar\` para continuar o \`*cancelar\` para abortar.\n\n_Esta confirmación expira en 30 segundos._`);
+
+  await message.channel.send({ embeds: [embed] });
+}
 
 async function handleSetFav(message, args) {
   const guildId = message.guild?.id;
@@ -1251,20 +1263,6 @@ async function handleSetFav(message, args) {
   if (isUrl) {
     embed.setImage(item.reply);
   }
-
-  await message.channel.send({ embeds: [embed] });
-}
-
-  pendingConfirmations.set(confirmationKey, {
-    command: 'resetitems',
-    data: {},
-    timeout
-  });
-
-  const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
-    .setTitle('⚠️ Confirmación Requerida')
-    .setDescription(`¿Estás seguro de que quieres **ELIMINAR TODOS LOS PREMIOS** del gacha?\n\nEsto también eliminará todos los inventarios de usuarios.\n\nEsta acción no se puede deshacer.\n\nEscribe \`*confirmar\` para continuar o \`*cancelar\` para abortar.\n\n_Esta confirmación expira en 30 segundos._`);
 
   await message.channel.send({ embeds: [embed] });
 }
