@@ -730,12 +730,16 @@ async function handleBannerShop(message) {
 
   const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
   let currencySymbol = customSymbol;
-  
+
   if (!currencySymbol) {
-    try {
-      const guildData = await unbClient.getGuild(guildId);
-      currencySymbol = guildData.currencySymbol || '💰';
-    } catch (error) {
+    if (unbClient) {
+      try {
+        const guildData = await unbClient.getGuild(guildId);
+        currencySymbol = guildData.currencySymbol || '💰';
+      } catch (error) {
+        currencySymbol = '💰';
+      }
+    } else {
       currencySymbol = '💰';
     }
   }
@@ -785,7 +789,7 @@ async function handleCreateItem(message, args) {
   await storage.createItem(guildId, name, 1, 'R', 'Premio obtenido');
 
   const embed = new EmbedBuilder()
-    .setColor(storage.getRarityColor('R'))
+    .setColor(storage.RarityColor(item.rarity))
     .setTitle('✅ Premio Creado')
     .setDescription(`El premio **${name}** ha sido creado con valores por defecto.`)
     .addFields(
@@ -1192,7 +1196,7 @@ async function handleSetFav(message, args) {
 
   const characterName = args.join(' ');
   const allItems = await storage.getAllItems(guildId);
-  
+
   // Filtrar solo personajes
   const personajes = allItems.filter(item => {
     const objectType = (item.objectType || 'personaje').toLowerCase();
@@ -2119,12 +2123,16 @@ async function handleInventory(message) {
 
   const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
   let currencySymbol = customSymbol;
-  
+
   if (!currencySymbol) {
-    try {
-      const guildData = await unbClient.getGuild(guildId);
-      currencySymbol = guildData.currencySymbol || '💰';
-    } catch (error) {
+    if (unbClient) {
+      try {
+        const guildData = await unbClient.getGuild(guildId);
+        currencySymbol = guildData.currencySymbol || '💰';
+      } catch (error) {
+        currencySymbol = '💰';
+      }
+    } else {
       currencySymbol = '💰';
     }
   }
