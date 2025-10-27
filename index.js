@@ -98,6 +98,8 @@ client.on('messageCreate', async (message) => {
       await handleBannerShop(message);
     } else if (command === 'perfil' || command === 'profile') {
       await handlePerfil(message);
+    } else if (command === 'setfav') {
+      await handleSetFav(message, args);
     } else if (command === 'createitem') {
       await handleCreateItem(message, args);
     } else if (command === 'edititem') {
@@ -240,6 +242,9 @@ async function handleGirar(message) {
   }
 
   const item = await storage.getRandomItemWithPity(guildId, message.author.id);
+
+  // Incrementar contador de spins totales
+  await storage.incrementTotalSpins(guildId, message.author.id, 1);
 
   if (!item) {
     return message.reply('❌ No hay premios configurados en el gacha.');
@@ -441,6 +446,9 @@ async function handleGirar10(message) {
   }
 
   const results = [];
+
+  // Incrementar contador de spins totales
+  await storage.incrementTotalSpins(guildId, message.author.id, 10);
 
   for (let i = 0; i < 10; i++) {
     const item = await storage.getRandomItemWithPity(guildId, message.author.id);
@@ -1167,6 +1175,75 @@ async function handleResetItems(message) {
   const timeout = setTimeout(() => {
     pendingConfirmations.delete(confirmationKey);
   }, 30000);
+
+
+
+async function handleSetFav(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  if (args.length < 1) {
+    const currentFav = await storage.getUserFavorite(guildId, message.author.id);
+    if (currentFav) {
+      return message.channel.send(`⭐ Tu personaje favorito actual es: **${currentFav.name}**\n\nPara cambiarlo: \`*setfav <nombre del personaje>\``);
+    }
+    return message.channel.send('❌ Uso: `*setfav <nombre del personaje>`\n\nEjemplo: `*setfav Joker`');
+  }
+
+  const characterName = args.join(' ');
+  const allItems = await storage.getAllItems(guildId);
+  const item = await searchItemByPartialName(allItems, characterName);
+
+  if (!item) {
+    return message.channel.send(`❌ No se encontró el personaje **${characterName}**.`);
+  }
+
+  const objectType = (item.objectType || 'personaje').toLowerCase();
+  if (objectType !== 'personaje') {
+    return message.channel.send(`❌ **${item.name}** no es un personaje. Solo puedes establecer personajes como favoritos.\n\nUsa \`*setfav <nombre del personaje>\``);
+  }
+
+  const member = message.member;
+  let hasCharacter = false;
+
+  if (item.roleGiven) {
+    let roleToCheck = message.guild?.roles.cache.find((r) => r.name === item.roleGiven);
+
+    if (!roleToCheck) {
+      const roleMentionMatch = item.roleGiven?.match(/<@&(\d+)>/);
+      if (roleMentionMatch) {
+        roleToCheck = message.guild?.roles.cache.get(roleMentionMatch[1]);
+      }
+    }
+
+    if (!roleToCheck && item.roleGiven) {
+      roleToCheck = message.guild?.roles.cache.get(item.roleGiven);
+    }
+
+    if (roleToCheck) {
+      hasCharacter = member.roles.cache.has(roleToCheck.id);
+    }
+  }
+
+  if (!hasCharacter) {
+    return message.channel.send(`❌ No tienes el personaje **${item.name}**. Solo puedes establecer como favorito personajes que tengas.`);
+  }
+
+  await storage.setUserFavorite(guildId, message.author.id, item.name);
+
+  const embed = new EmbedBuilder()
+    .setColor(storage.getRarityColor(item.rarity))
+    .setTitle('⭐ Personaje Favorito Actualizado')
+    .setDescription(`Has establecido a **${item.name}** como tu personaje favorito.`)
+    .addFields({ name: 'Rareza', value: storage.getRarityStars(item.rarity), inline: true });
+
+  const isUrl = item.reply?.match(/^https?:\/\/.+\.(gif|png|jpg|jpeg|webp)(\?.*)?$/i);
+  if (isUrl) {
+    embed.setImage(item.reply);
+  }
+
+  await message.channel.send({ embeds: [embed] });
+}
 
   pendingConfirmations.set(confirmationKey, {
     command: 'resetitems',
@@ -2034,6 +2111,18 @@ async function handleInventory(message) {
     return message.channel.send('❌ No hay personas u objetos configurados en el gacha.');
   }
 
+  const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+  let currencySymbol = customSymbol;
+  
+  if (!currencySymbol) {
+    try {
+      const guildData = await unbClient.getGuild(guildId);
+      currencySymbol = guildData.currencySymbol || '💰';
+    } catch (error) {
+      currencySymbol = '💰';
+    }
+  }
+
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle('Tu Inventario')
@@ -2063,9 +2152,13 @@ async function handleInventory(message) {
         }
       }
 
+      const price = item.price || 0;
+      const formattedPrice = price.toLocaleString('en-US');
+      const priceText = price > 0 ? ` | ${currencySymbol} ${formattedPrice}` : '';
+
       embed.addFields({
         name: `${rarityStars} ${item.name}`,
-        value: `**Tipo:** ${objectType.charAt(0).toUpperCase() + objectType.slice(1)}\n${statusText}`,
+        value: `**Tipo:** ${objectType.charAt(0).toUpperCase() + objectType.slice(1)}\n${statusText}${priceText}`,
         inline: true
       });
     }
@@ -2087,6 +2180,7 @@ async function handlePerfil(message) {
   const pityData = await storage.getUserPity(guildId, message.author.id);
   const pityMax = await storage.getConfig(guildId, 'pity_max') || 90;
   const collectables = await storage.getUserCollectables(guildId, message.author.id);
+  const totalSpins = await storage.getUserTotalSpins(guildId, message.author.id);
 
   // Filtrar personajes que el usuario tiene (por rol)
   const personajes = [];
@@ -2149,18 +2243,26 @@ async function handlePerfil(message) {
       iconURL: message.author.displayAvatarURL({ dynamic: true })
     })
     .addFields(
-      { name: '🎲 Tiradas desde último SSR', value: `${pityData.counter}/${pityMax}`, inline: true },
+      { name: '🎲 Tiradas Totales', value: `${totalSpins.toLocaleString('en-US')}`, inline: true },
       { name: '🎯 Sistema 50/50', value: pityData.guaranteedPromo ? 'Garantizado' : 'Activo', inline: true },
       { name: '👥 Personajes Obtenidos', value: `${personajes.length}`, inline: true }
     );
 
-  // Mostrar personajes
+  // Obtener personaje favorito
+  const favCharacter = await storage.getUserFavorite(guildId, message.author.id);
+  if (favCharacter && favCharacter.reply) {
+    const isUrl = favCharacter.reply.match(/^https?:\/\/.+\.(gif|png|jpg|jpeg|webp)(\?.*)?$/i);
+    if (isUrl) {
+      embed.setThumbnail(favCharacter.reply);
+    }
+  }
+
+  // Mostrar personajes (sin estrellas)
   if (personajes.length > 0) {
     let personajesList = '';
     for (const item of personajes) {
-      const rarityStars = storage.getRarityStars(item.rarity);
       const promoMarker = item.promo ? ' ⭐' : '';
-      personajesList += `${rarityStars} ${item.name}${promoMarker}\n`;
+      personajesList += `${item.name}${promoMarker}\n`;
     }
 
     // Dividir en chunks si es muy largo
@@ -2188,12 +2290,11 @@ async function handlePerfil(message) {
     });
   }
 
-  // Mostrar personas/objetos
+  // Mostrar personas/objetos (sin estrellas)
   if (personasObjetos.length > 0) {
     let personasObjetosList = '';
     for (const item of personasObjetos) {
-      const rarityStars = storage.getRarityStars(item.rarity);
-      personasObjetosList += `${rarityStars} ${item.name}\n`;
+      personasObjetosList += `${item.name}\n`;
     }
 
     if (personasObjetosList.length > 1024) {
@@ -2515,6 +2616,9 @@ async function handleGirarSlash(interaction) {
 
   const item = await storage.getRandomItemWithPity(guildId, interaction.user.id);
 
+  // Incrementar contador de spins totales
+  await storage.incrementTotalSpins(guildId, interaction.user.id, 1);
+
   if (!item) {
     return interaction.reply({ content: '❌ No hay premios configurados en el gacha.', ephemeral: true });
   }
@@ -2721,6 +2825,9 @@ async function handleGirar10Slash(interaction) {
   }
 
   const results = [];
+
+  // Incrementar contador de spins totales
+  await storage.incrementTotalSpins(guildId, interaction.user.id, 10);
 
   for (let i = 0; i < 10; i++) {
     const item = await storage.getRandomItemWithPity(guildId, interaction.user.id);

@@ -417,6 +417,43 @@ async function getRarityTokenEmoji(rarity) {
   return await getTokenEmoji(rarity);
 }
 
+async function getUserFavorite(guildId, userId) {
+  const filePath = getFilePath(guildId, 'favorites');
+  const data = await readJSON(filePath, {});
+  
+  if (!data[userId]) return null;
+  
+  const favName = data[userId];
+  const items = await getAllItems(guildId);
+  return items.find(item => item.name === favName) || null;
+}
+
+async function setUserFavorite(guildId, userId, itemName) {
+  const filePath = getFilePath(guildId, 'favorites');
+  const data = await readJSON(filePath, {});
+  
+  data[userId] = itemName;
+  await writeJSON(filePath, data);
+}
+
+async function getUserTotalSpins(guildId, userId) {
+  const filePath = getFilePath(guildId, 'total_spins');
+  const data = await readJSON(filePath, {});
+  return data[userId] || 0;
+}
+
+async function incrementTotalSpins(guildId, userId, amount) {
+  const filePath = getFilePath(guildId, 'total_spins');
+  const data = await readJSON(filePath, {});
+  
+  if (!data[userId]) {
+    data[userId] = 0;
+  }
+  
+  data[userId] += amount;
+  await writeJSON(filePath, data);
+}
+
 module.exports = {
   ensureDataFiles,
   getAllItems,
@@ -447,5 +484,9 @@ module.exports = {
   getRarityColor,
   getRarityStars,
   getTokenEmoji,
-  getRarityTokenEmoji
+  getRarityTokenEmoji,
+  getUserFavorite,
+  setUserFavorite,
+  getUserTotalSpins,
+  incrementTotalSpins
 };
