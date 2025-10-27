@@ -1187,23 +1187,29 @@ async function handleSetFav(message, args) {
     if (currentFav) {
       return message.channel.send(`⭐ Tu personaje favorito actual es: **${currentFav.name}**\n\nPara cambiarlo: \`*setfav <nombre del personaje>\``);
     }
-    return message.channel.send('❌ Uso: `*setfav <nombre del personaje>`\n\nEjemplo: `*setfav Joker`');
+    return message.channel.send('❌ Uso: `*setfav <nombre del personaje>`\n\nEjemplo: `*setfav Joker`\n\nPuedes usar nombres parciales como `*setfav jok`');
   }
 
   const characterName = args.join(' ');
   const allItems = await storage.getAllItems(guildId);
-  const item = await searchItemByPartialName(allItems, characterName);
+  
+  // Filtrar solo personajes
+  const personajes = allItems.filter(item => {
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    return objectType === 'personaje';
+  });
+
+  const item = await searchItemByPartialName(personajes, characterName);
 
   if (!item) {
-    return message.channel.send(`❌ No se encontró el personaje **${characterName}**.`);
-  }
-
-  const objectType = (item.objectType || 'personaje').toLowerCase();
-  if (objectType !== 'personaje') {
-    return message.channel.send(`❌ **${item.name}** no es un personaje. Solo puedes establecer personajes como favoritos.\n\nUsa \`*setfav <nombre del personaje>\``);
+    return message.channel.send(`❌ No se encontró el personaje **${characterName}**.\n\nPuedes usar nombres parciales como \`*setfav jok\` para buscar "Joker".`);
   }
 
   const member = message.member;
+  if (!member) {
+    return message.channel.send('❌ No se pudo verificar tus roles. Intenta de nuevo.');
+  }
+
   let hasCharacter = false;
 
   if (item.roleGiven) {
@@ -1226,7 +1232,7 @@ async function handleSetFav(message, args) {
   }
 
   if (!hasCharacter) {
-    return message.channel.send(`❌ No tienes el personaje **${item.name}**. Solo puedes establecer como favorito personajes que tengas.`);
+    return message.channel.send(`❌ No tienes el personaje **${item.name}**. Solo puedes establecer como favorito personajes que tengas.\n\nObtén personajes haciendo spins en el gacha.`);
   }
 
   await storage.setUserFavorite(guildId, message.author.id, item.name);
@@ -1234,7 +1240,7 @@ async function handleSetFav(message, args) {
   const embed = new EmbedBuilder()
     .setColor(storage.getRarityColor(item.rarity))
     .setTitle('⭐ Personaje Favorito Actualizado')
-    .setDescription(`Has establecido a **${item.name}** como tu personaje favorito.`)
+    .setDescription(`Has establecido a **${item.name}** como tu personaje favorito.\n\nAparecerá en tu perfil al usar \`*perfil\`.`)
     .addFields({ name: 'Rareza', value: storage.getRarityStars(item.rarity), inline: true });
 
   const isUrl = item.reply?.match(/^https?:\/\/.+\.(gif|png|jpg|jpeg|webp)(\?.*)?$/i);
@@ -2125,7 +2131,7 @@ async function handleInventory(message) {
 
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle('Tu Inventario')
+    .setTitle('🎒 Tu Inventario')
     .setDescription(`Aquí están tus personas y objetos coleccionables:`)
     .setAuthor({
       name: message.author.username,
@@ -2154,7 +2160,7 @@ async function handleInventory(message) {
 
       const price = item.price || 0;
       const formattedPrice = price.toLocaleString('en-US');
-      const priceText = price > 0 ? ` | ${currencySymbol} ${formattedPrice}` : '';
+      const priceText = price > 0 ? `\n💰 **Precio de venta:** ${currencySymbol}${formattedPrice} c/u` : '';
 
       embed.addFields({
         name: `${rarityStars} ${item.name}`,
@@ -2167,6 +2173,8 @@ async function handleInventory(message) {
   if (!hasAnyItem) {
     embed.setDescription('No tienes ninguna persona u objeto en tu inventario aún.\n\nObtén items haciendo spins en el gacha.');
   }
+
+  embed.setFooter({ text: 'Usa *sell <nombre> <cantidad> para vender items' });
 
   await message.channel.send({ embeds: [embed] });
 }
