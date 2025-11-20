@@ -3394,8 +3394,8 @@ async function handleCombatButton(interaction) {
       }
     );
     
-    boss.hp -= dmgResult.damage;
-    if (boss.hp < 0) boss.hp = 0;
+    boss.currentHp -= dmgResult.damage;
+    if (boss.currentHp < 0) boss.currentHp = 0;
     
     if (dmgResult.isReflect) {
       currentChar.currentHp -= dmgResult.reflected;
@@ -3449,8 +3449,8 @@ async function handleCombatButton(interaction) {
         }
       );
       
-      boss.hp -= dmgResult.damage;
-      if (boss.hp < 0) boss.hp = 0;
+      boss.currentHp -= dmgResult.damage;
+      if (boss.currentHp < 0) boss.currentHp = 0;
       
       if (dmgResult.isReflect) {
         currentChar.currentHp -= dmgResult.reflected;
@@ -3491,7 +3491,7 @@ async function handleCombatButton(interaction) {
     return interaction.editReply({ embeds: [embed], components: [] });
   }
   
-  if (boss.hp <= 0) {
+  if (boss.currentHp <= 0) {
     combat.deleteSession(guildId, interaction.user.id);
     
     const rewards = await storage.getConfig(guildId, 'bossfight_rewards') || 1000;

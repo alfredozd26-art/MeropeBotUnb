@@ -1,62 +1,213 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const { calculateDamage } = require('./bossfight');
 
-const activeSessions = new Map();
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const bossfight = require('./bossfight');
+
 const MAX_SESSIONS_PER_GUILD = 5;
-const TURN_TIMEOUT = 60000;
+const activeSessions = new Map();
 
-function getActiveSessions(guildId) {
-  if (!activeSessions.has(guildId)) {
-    activeSessions.set(guildId, new Map());
-  }
-  return activeSessions.get(guildId);
+function getSessionKey(guildId, userId) {
+  return `${guildId}-${userId}`;
 }
 
 function canStartSession(guildId) {
-  const sessions = getActiveSessions(guildId);
-  return sessions.size < MAX_SESSIONS_PER_GUILD;
+  let count = 0;
+  for (const [key] of activeSessions) {
+    if (key.startsWith(guildId + '-')) {
+      count++;
+    }
+  }
+  return count < MAX_SESSIONS_PER_GUILD;
 }
 
 function createSession(guildId, channelId, userId, boss, characters) {
-  const sessions = getActiveSessions(guildId);
+  const sessionKey = getSessionKey(guildId, userId);
+  
+  const bossClone = JSON.parse(JSON.stringify(boss));
+  bossClone.currentHp = boss.hp;
+  
+  const charsClone = characters.map(c => {
+    const clone = JSON.parse(JSON.stringify(c));
+    clone.currentHp = c.hp;
+    clone.currentSp = c.sp;
+    clone.buffs = {};
+    clone.debuffs = {};
+    clone.cooldowns = {};
+    return clone;
+  });
   
   const session = {
+    guildId,
     channelId,
     userId,
-    boss: JSON.parse(JSON.stringify(boss)),
-    characters: characters.map(c => ({
-      ...JSON.parse(JSON.stringify(c)),
-      buffs: {},
-      debuffs: {},
-      cooldowns: {},
-      currentHp: c.hp,
-      currentSp: c.sp
-    })),
+    boss: bossClone,
+    characters: charsClone,
     currentCharIndex: 0,
     turn: 0,
-    bossCooldowns: {},
     bossBuffs: {},
     bossDebuffs: {},
-    startTime: Date.now(),
     lastActionTime: Date.now(),
-    rewards: 0
+    messageId: null
   };
   
-  sessions.set(userId, session);
+  activeSessions.set(sessionKey, session);
   return session;
 }
 
 function getSession(guildId, userId) {
-  const sessions = getActiveSessions(guildId);
-  return sessions.get(userId);
+  return activeSessions.get(getSessionKey(guildId, userId));
 }
 
 function deleteSession(guildId, userId) {
-  const sessions = getActiveSessions(guildId);
-  sessions.delete(userId);
+  activeSessions.delete(getSessionKey(guildId, userId));
 }
 
-function applyBuffs(character) {
+function createCombatEmbed(session) {
+  const currentChar = session.characters[session.currentCharIndex];
+  const boss = session.boss;
+  
+  const bossHpPercent = Math.floor((boss.currentHp / boss.maxHp) * 100);
+  const charHpPercent = Math.floor((currentChar.currentHp / currentChar.maxHp) * 100);
+  const charSpPercent = Math.floor((currentChar.currentSp / currentChar.maxSp) * 100);
+  
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle(`⚔️ Boss Fight - Turno ${session.turn + 1}`)
+    .setDescription(`**${boss.name}** VS **${currentChar.name}**`)
+    .addFields(
+      {
+        name: `👹 ${boss.name}`,
+        value: `HP: ${boss.currentHp}/${boss.maxHp} (${bossHpPercent}%)\n**Tipo:** ${boss.type.toUpperCase()}`,
+        inline: true
+      },
+      {
+        name: `⚔️ ${currentChar.name}`,
+        value: `HP: ${currentChar.currentHp}/${currentChar.maxHp} (${charHpPercent}%)\nSP: ${currentChar.currentSp}/${currentChar.maxSp} (${charSpPercent}%)\n**Tipo:** ${currentChar.type.toUpperCase()}`,
+        inline: true
+      }
+    )
+    .setFooter({ text: 'Tienes 60 segundos para actuar' });
+  
+  const buffsText = [];
+  if (Object.keys(currentChar.buffs).length > 0) {
+    buffsText.push('**Buffs:** ' + Object.entries(currentChar.buffs).map(([k, v]) => `${k} (${v}t)`).join(', '));
+  }
+  if (Object.keys(currentChar.debuffs).length > 0) {
+    buffsText.push('**Debuffs:** ' + Object.entries(currentChar.debuffs).map(([k, v]) => `${k} (${v}t)`).join(', '));
+  }
+  if (buffsText.length > 0) {
+    embed.addFields({ name: '🔮 Estados', value: buffsText.join('\n'), inline: false });
+  }
+  
+  return embed;
+}
+
+function createActionButtons(session) {
+  const currentChar = session.characters[session.currentCharIndex];
+  
+  const row = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('combat_attack')
+        .setLabel('⚔️ Atacar')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('combat_skill')
+        .setLabel('🔮 Habilidad')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(currentChar.skills.length === 0),
+      new ButtonBuilder()
+        .setCustomId('combat_defend')
+        .setLabel('🛡️ Defender')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('combat_surrender')
+        .setLabel('🏳️ Rendirse')
+        .setStyle(ButtonStyle.Danger)
+    );
+  
+  return [row];
+}
+
+function performBossAction(session) {
+  const boss = session.boss;
+  const currentChar = session.characters[session.currentCharIndex];
+  
+  let selectedSkill = null;
+  
+  if (boss.skills && boss.skills.length > 0) {
+    const availableSkills = boss.skills.filter(s => !s.currentCooldown || s.currentCooldown <= 0);
+    
+    if (availableSkills.length > 0) {
+      selectedSkill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+    }
+  }
+  
+  let damage = 0;
+  let action = '';
+  
+  if (selectedSkill) {
+    const stats = applyBuffs(boss, session.bossBuffs, session.bossDebuffs);
+    const dmgResult = bossfight.calculateDamage(
+      stats,
+      currentChar,
+      {
+        skillType: selectedSkill.type,
+        skillDamage: selectedSkill.damage,
+        weaknesses: currentChar.weaknesses,
+        resistances: currentChar.resistances,
+        reflects: currentChar.reflects
+      }
+    );
+    
+    damage = dmgResult.damage;
+    currentChar.currentHp -= damage;
+    if (currentChar.currentHp < 0) currentChar.currentHp = 0;
+    
+    if (selectedSkill.effect) {
+      const [effectType, effectTarget] = selectedSkill.effect.split('_');
+      if (effectTarget === 'up') {
+        session.bossBuffs[selectedSkill.effect] = 3;
+      } else if (effectTarget === 'down') {
+        currentChar.debuffs[selectedSkill.effect] = 3;
+      }
+    }
+    
+    if (selectedSkill.cooldown > 0) {
+      selectedSkill.currentCooldown = selectedSkill.cooldown;
+    }
+    
+    action = `usó **${selectedSkill.name}**`;
+  } else {
+    const stats = applyBuffs(boss, session.bossBuffs, session.bossDebuffs);
+    const dmgResult = bossfight.calculateDamage(
+      stats,
+      currentChar,
+      {
+        weaknesses: currentChar.weaknesses,
+        resistances: currentChar.resistances,
+        reflects: currentChar.reflects
+      }
+    );
+    
+    damage = dmgResult.damage;
+    currentChar.currentHp -= damage;
+    if (currentChar.currentHp < 0) currentChar.currentHp = 0;
+    
+    action = 'atacó';
+  }
+  
+  if (boss.skills) {
+    for (const skill of boss.skills) {
+      if (skill.currentCooldown && skill.currentCooldown > 0) {
+        skill.currentCooldown--;
+      }
+    }
+  }
+  
+  return { action, damage };
+}
+
+function applyBuffs(character, buffs = null, debuffs = null) {
   const stats = {
     atk: character.atk,
     def: character.def,
@@ -64,13 +215,16 @@ function applyBuffs(character) {
     type: character.type
   };
   
-  if (character.buffs && character.buffs.atk_up) stats.atk *= 1.3;
-  if (character.buffs && character.buffs.def_up) stats.def *= 1.3;
-  if (character.buffs && character.buffs.spd_up) stats.spd *= 1.3;
+  const effectiveBuffs = buffs || character.buffs || {};
+  const effectiveDebuffs = debuffs || character.debuffs || {};
   
-  if (character.debuffs && character.debuffs.atk_down) stats.atk *= 0.7;
-  if (character.debuffs && character.debuffs.def_down) stats.def *= 0.7;
-  if (character.debuffs && character.debuffs.spd_down) stats.spd *= 0.7;
+  if (effectiveBuffs.atk_up) stats.atk = Math.floor(stats.atk * 1.3);
+  if (effectiveBuffs.def_up) stats.def = Math.floor(stats.def * 1.3);
+  if (effectiveBuffs.spd_up) stats.spd = Math.floor(stats.spd * 1.3);
+  
+  if (effectiveDebuffs.atk_down) stats.atk = Math.floor(stats.atk * 0.7);
+  if (effectiveDebuffs.def_down) stats.def = Math.floor(stats.def * 0.7);
+  if (effectiveDebuffs.spd_down) stats.spd = Math.floor(stats.spd * 0.7);
   
   return stats;
 }
@@ -91,201 +245,25 @@ function decrementBuffsDebuffs(entity) {
   }
 }
 
-function createCombatEmbed(session) {
-  const currentChar = session.characters[session.currentCharIndex];
-  const boss = session.boss;
-  
-  const bossHpPercent = Math.floor((boss.hp / boss.maxHp) * 100);
-  const charHpPercent = Math.floor((currentChar.currentHp / currentChar.maxHp) * 100);
-  const charSpPercent = Math.floor((currentChar.currentSp / currentChar.maxSp) * 100);
-  
-  const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
-    .setTitle(`⚔️ Boss Fight - Turno ${session.turn + 1}`)
-    .setDescription(`**${boss.name}** VS **${currentChar.name}**`)
-    .addFields(
-      {
-        name: `👹 ${boss.name}`,
-        value: `HP: ${boss.hp}/${boss.maxHp} (${bossHpPercent}%)\n**Tipo:** ${boss.type.toUpperCase()}`,
-        inline: true
-      },
-      {
-        name: `⚔️ ${currentChar.name}`,
-        value: `HP: ${currentChar.currentHp}/${currentChar.maxHp} (${charHpPercent}%)\nSP: ${currentChar.currentSp}/${currentChar.maxSp} (${charSpPercent}%)\n**Tipo:** ${currentChar.type.toUpperCase()}`,
-        inline: true
-      }
-    )
-    .setFooter({ text: 'Tienes 60 segundos para actuar' });
-  
-  const buffsText = [];
-  if (Object.keys(currentChar.buffs).length > 0) {
-    buffsText.push('**Buffs:** ' + Object.entries(currentChar.buffs).map(([k, v]) => `${k} (${v}t)`).join(', '));
-  }
-  if (Object.keys(currentChar.debuffs).length > 0) {
-    buffsText.push('**Debuffs:** ' + Object.entries(currentChar.debuffs).map(([k, v]) => `${k} (${v}t)`).join(', '));
-  }
-  if (buffsText.length > 0) {
-    embed.addFields({ name: '📊 Estado', value: buffsText.join('\n'), inline: false });
-  }
-  
-  return embed;
-}
-
-function createActionButtons(session) {
-  const currentChar = session.characters[session.currentCharIndex];
-  
-  const row1 = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('combat_attack')
-        .setLabel('⚔️ Atacar')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('combat_skill')
-        .setLabel('✨ Habilidad')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(currentChar.skills.length === 0),
-      new ButtonBuilder()
-        .setCustomId('combat_defend')
-        .setLabel('🛡️ Defender')
-        .setStyle(ButtonStyle.Secondary)
-    );
-  
-  const row2 = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('combat_surrender')
-        .setLabel('🏳️ Rendirse')
-        .setStyle(ButtonStyle.Danger)
-    );
-  
-  return [row1, row2];
-}
-
-function performBossAction(session) {
-  const boss = session.boss;
-  const currentChar = session.characters[session.currentCharIndex];
-  
-  const availableSkills = boss.skills.filter(s => !session.bossCooldowns[s.name] || session.bossCooldowns[s.name] <= 0);
-  
-  let action;
-  let result = {};
-  
-  if (availableSkills.length > 0 && Math.random() > 0.4) {
-    const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-    
-    const bossStats = applyBuffs({ ...boss, buffs: session.bossBuffs, debuffs: session.bossDebuffs });
-    const charStats = applyBuffs(currentChar);
-    
-    const dmgResult = calculateDamage(
-      { ...bossStats, type: skill.type },
-      charStats,
-      {
-        skillType: skill.type,
-        skillDamage: skill.damage,
-        weaknesses: currentChar.weaknesses,
-        resistances: currentChar.resistances,
-        reflects: currentChar.reflects
-      }
-    );
-    
-    currentChar.currentHp -= dmgResult.damage;
-    if (currentChar.currentHp < 0) currentChar.currentHp = 0;
-    
-    if (dmgResult.isReflect) {
-      boss.hp -= dmgResult.reflected;
-      if (boss.hp < 0) boss.hp = 0;
-    }
-    
-    if (skill.effect) {
-      const [effectType, effectTarget] = skill.effect.split('_');
-      if (effectTarget === 'down') {
-        currentChar.debuffs[skill.effect] = 3;
-      } else if (effectTarget === 'up') {
-        session.bossBuffs[skill.effect] = 3;
-      }
-    }
-    
-    session.bossCooldowns[skill.name] = skill.cooldown;
-    
-    result = {
-      action: `usó **${skill.name}**`,
-      damage: dmgResult.damage,
-      reflected: dmgResult.reflected,
-      isReflect: dmgResult.isReflect,
-      effect: skill.effect
-    };
-  } else {
-    const bossStats = applyBuffs({ ...boss, buffs: session.bossBuffs, debuffs: session.bossDebuffs });
-    const charStats = applyBuffs(currentChar);
-    
-    const dmgResult = calculateDamage(
-      bossStats,
-      charStats,
-      {
-        weaknesses: currentChar.weaknesses,
-        resistances: currentChar.resistances,
-        reflects: currentChar.reflects
-      }
-    );
-    
-    currentChar.currentHp -= dmgResult.damage;
-    if (currentChar.currentHp < 0) currentChar.currentHp = 0;
-    
-    if (dmgResult.isReflect) {
-      boss.hp -= dmgResult.reflected;
-      if (boss.hp < 0) boss.hp = 0;
-    }
-    
-    result = {
-      action: 'atacó',
-      damage: dmgResult.damage,
-      reflected: dmgResult.reflected,
-      isReflect: dmgResult.isReflect
-    };
-  }
-  
-  for (const skill in session.bossCooldowns) {
-    session.bossCooldowns[skill]--;
-  }
-  
-  return result;
-}
-
 function regenerateSP(session) {
   if (session.turn % 3 === 0 && session.turn > 0) {
-    for (const char of session.characters) {
-      char.currentSp = Math.min(char.currentSp + 10, char.maxSp);
-    }
+    const currentChar = session.characters[session.currentCharIndex];
+    currentChar.currentSp = Math.min(currentChar.currentSp + 10, currentChar.maxSp);
     return true;
   }
   return false;
 }
 
-function cleanupInactiveSessions() {
-  const now = Date.now();
-  for (const [guildId, sessions] of activeSessions.entries()) {
-    for (const [userId, session] of sessions.entries()) {
-      if (now - session.lastActionTime > 120000) {
-        sessions.delete(userId);
-      }
-    }
-  }
-}
-
-setInterval(cleanupInactiveSessions, 60000);
-
 module.exports = {
-  getActiveSessions,
+  MAX_SESSIONS_PER_GUILD,
   canStartSession,
   createSession,
   getSession,
   deleteSession,
-  applyBuffs,
-  decrementBuffsDebuffs,
   createCombatEmbed,
   createActionButtons,
   performBossAction,
-  regenerateSP,
-  MAX_SESSIONS_PER_GUILD
+  applyBuffs,
+  decrementBuffsDebuffs,
+  regenerateSP
 };

@@ -454,6 +454,26 @@ async function incrementTotalSpins(guildId, userId, amount) {
   await writeJSON(filePath, data);
 }
 
+function getFilePath(guildId, filename) {
+  return path.join(DATA_DIR, `${guildId}_${filename}.json`);
+}
+
+async function readJSON(filePath, defaultValue = {}) {
+  try {
+    const data = await fs.readFile(filePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return defaultValue;
+    }
+    throw error;
+  }
+}
+
+async function writeJSON(filePath, data) {
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
 module.exports = {
   ensureDataFiles,
   getAllItems,
@@ -488,5 +508,8 @@ module.exports = {
   getUserFavorite,
   setUserFavorite,
   getUserTotalSpins,
-  incrementTotalSpins
+  incrementTotalSpins,
+  getFilePath,
+  readJSON,
+  writeJSON
 };
