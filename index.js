@@ -201,6 +201,14 @@ client.on('messageCreate', async (message) => {
       await handleListChars(message);
     } else if (command === 'listbosses') {
       await handleListBosses(message);
+    } else if (command === 'editcdbf') {
+      await handleEditCDBF(message, args);
+    } else if (command === 'createskill') {
+      await handleCreateSkill(message, args);
+    } else if (command === 'listskills') {
+      await handleListSkills(message);
+    } else if (command === 'deleteskill') {
+      await handleDeleteSkill(message, args);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -1770,7 +1778,27 @@ async function handleFixHelp(message) {
       },
       {
         name: '⚙️ Comandos de Configuración',
-        value: '**`*setticketrole <rol>`** - Configurar rol de ticket para `*spin`\n**`*setticketrole10 <rol>`** - Configurar rol de ticket para `*spin10`\n**`*editpull <url_gif>`** - Configurar GIF de tirada normal\n**`*editpull remove`** - Quitar GIF de tirada normal\n**`*editpullssr <url_gif>`** - Configurar GIF para SSR/Promocional\n**`*editpullssr remove`** - Quitar GIF de SSR/Promocional\n**`*editpulltimer <milisegundos>`** - Configurar duración del GIF (ej: 5000 = 5s)\n**`*editpulltimer`** - Ver timer actual\n**`*editpulltimer reset`** - Resetear timer a 11.5s\n**`*editpity <número>`** - Configurar en qué tirada es el SSR asegurado (ej: 100)\n**`*editpity`** - Ver pity actual\n**`*editpity reset`** - Resetear pity a 90\n**`*setcurrency <emoji>`** - Configurar emoji del título de tokens',
+        value: '**`*setticketrole <rol>`** - Configurar rol de ticket para `*spin`\n**`*setticketrole10 <rol>`** - Configurar rol de ticket para `*spin10`\n**`*editpull <url_gif>`** - Configurar GIF de tirada normal\n**`*editpull remove`** - Quitar GIF de tirada normal\n**`*editpullssr <url_gif>`** - Configurar GIF para SSR/Promocional\n**`*editpullssr remove`** - Quitar GIF de SSR/Promocional\n**`*editpulltimer <milisegundos>`** - Configurar duración del GIF (ej: 5000 = 5s)\n**`*editpulltimer`** - Ver timer actual\n**`*editpulltimer reset`** - Resetear timer a 11.5s\n**`*editpity <número>`** - Configurar en qué tirada es el SSR asegurado (ej: 100)\n**`*editpity`** - Ver pity actual\n**`*editpity reset`** - Resetear pity a 90\n**`*setcurrency <emoji>`** - Configurar emoji del título de tokens\n**`*setcurrencyunb <emoji>`** - Configurar emoji de moneda UnbelievaBoat\n**`*setcurrencyunb reset`** - Usar emoji por defecto de UnbelievaBoat',
+        inline: false
+      },
+      {
+        name: '⚔️ Sistema de Bossfight - Personajes',
+        value: '**`*createchar <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`** - Crear personaje\nEjemplo: `*createchar Joker 500 120 80 100 curse`\n\n**`*editchar <personaje> <campo> <valor>`** - Editar stats\nCampos: hp, atk, def, spd, sp\nEjemplo: `*editchar Joker hp 600`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** - Equipar habilidad\n**`*listchars`** - Ver tus personajes',
+        inline: false
+      },
+      {
+        name: '⚔️ Sistema de Bossfight - Bosses',
+        value: '**`*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`** - Crear boss\nEjemplo: `*createboss Yaldabaoth 800 150 100 90 eiga`\n\n**`*editboss <boss> <campo> <valor>`** - Editar stats\nCampos: hp, atk, def, spd\n\n**`*editboss <boss> deb <tipo>`** - Configurar debilidad\n**`*editboss <boss> resist <tipo>`** - Configurar resistencia\n**`*editboss <boss> reflect <tipo> <porcentaje>`** - Configurar reflect\n\n**`*addskillboss <boss> "<nombre>" <tipo> <daño> [efecto] [cd]`** - Agregar habilidad\nEjemplo: `*addskillboss Yaldabaoth "Bloody Strike" eiga 160 atk_down 3`\n\n**`*deleteskillboss <boss> "<nombre>"`** - Eliminar habilidad\n**`*listbosses`** - Ver bosses disponibles',
+        inline: false
+      },
+      {
+        name: '⚔️ Sistema de Bossfight - Habilidades Comunes',
+        value: '**`*createskill "<nombre>" <tipo> <costo_sp> <daño> [efecto] [duración] [cd] [usa_hp]`**\nEjemplo: `*createskill "Tarukaja" buff 20 0 atk_up 3 0 false`\n\n**`*listskills`** - Ver habilidades comunes\n**`*deleteskill "<nombre>"`** - Eliminar habilidad común',
+        inline: false
+      },
+      {
+        name: '⚔️ Sistema de Bossfight - Combate',
+        value: '**`*enablebf`** - Activar bossfights en el servidor\n**`*disablebf`** - Desactivar bossfights en el servidor\n**`*startbf <boss> <personaje1> [personaje2] [personaje3]`** - Iniciar combate\nEjemplo: `*startbf Yaldabaoth Joker Ryuji Ann`\n\n**`*editcdbf <horas>`** - Configurar cooldown de bossfights\nEjemplo: `*editcdbf 4` (4 horas)\n**`*editcdbf`** - Ver cooldown actual\n**`*editcdbf reset`** - Resetear a 24h\n\n**Nota:** Máximo 6 bossfights simultáneas por servidor. Timeout: 90 segundos por turno.',
         inline: false
       },
       {
@@ -3281,19 +3309,20 @@ async function handleStartBF(message, args) {
   }
   
   const now = Date.now();
-  const cooldown = 24 * 60 * 60 * 1000;
+  const cooldownHours = await storage.getConfig(guildId, 'bossfight_cooldown') || 24;
+  const cooldown = cooldownHours * 60 * 60 * 1000;
   
   const lastBF = await storage.getConfig(guildId, `bf_cooldown_${message.author.id}`);
   if (lastBF) {
     const timeLeft = lastBF - now;
     if (timeLeft > 0) {
-      const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000));
+      const hoursLeft = (timeLeft / (60 * 60 * 1000)).toFixed(1);
       return message.reply(`❌ Debes esperar **${hoursLeft} horas** antes de iniciar otra bossfight.`);
     }
   }
   
   if (!combat.canStartSession(guildId)) {
-    return message.reply(`❌ Este servidor ya tiene el máximo de ${combat.MAX_SESSIONS_PER_GUILD} bossfights activas. Espera a que termine alguna.`);
+    return message.reply(`❌ Este servidor ya tiene el máximo de 6 bossfights activas. Espera a que termine alguna.`);
   }
   
   const existingSession = combat.getSession(guildId, message.author.id);
@@ -3357,7 +3386,7 @@ async function handleStartBF(message, args) {
       combat.deleteSession(guildId, message.author.id);
       await message.channel.send(`⏰ ${message.author}, tu tiempo se agotó. **Derrota automática**.`);
     }
-  }, 60000);
+  }, combat.COMBAT_TIMEOUT);
 }
 
 async function handleCombatButton(interaction) {
@@ -3560,7 +3589,7 @@ async function handleCombatButton(interaction) {
       combat.deleteSession(guildId, interaction.user.id);
       await interaction.channel.send(`⏰ ${interaction.user}, tu tiempo se agotó. **Derrota automática**.`);
     }
-  }, 60000);
+  }, combat.COMBAT_TIMEOUT);
 }
 
 async function handleListChars(message) {
@@ -3601,6 +3630,149 @@ async function handleListBosses(message) {
     ).join('\n'));
   
   message.reply({ embeds: [embed] });
+}
+
+async function handleEditCDBF(message, args) {
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.channel.send('❌ Solo administradores pueden usar este comando.');
+  }
+
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  if (args.length === 0) {
+    const currentCD = await storage.getConfig(guildId, 'bossfight_cooldown') || 24;
+    return message.channel.send(`⏱️ Cooldown actual: **${currentCD} horas**\n\nPara cambiarlo usa: \`*editcdbf <horas>\`\nEjemplo: \`*editcdbf 4\` (4 horas)\nO usa: \`*editcdbf reset\` para resetear a 24h`);
+  }
+
+  if (args[0].toLowerCase() === 'reset' || args[0].toLowerCase() === 'default') {
+    await storage.setConfig(guildId, 'bossfight_cooldown', 24);
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF00)
+      .setTitle('✅ Cooldown Reseteado')
+      .setDescription(`El cooldown de bossfights ha sido reseteado a **24 horas**`);
+    return message.channel.send({ embeds: [embed] });
+  }
+
+  const hours = parseFloat(args[0]);
+
+  if (isNaN(hours) || hours < 0 || hours > 168) {
+    return message.channel.send('❌ El cooldown debe ser un número entre 0 y 168 horas (1 semana).\n\nEjemplo: `*editcdbf 4` para 4 horas\nO usa decimales: `*editcdbf 0.5` para 30 minutos');
+  }
+
+  await storage.setConfig(guildId, 'bossfight_cooldown', hours);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF00)
+    .setTitle('✅ Cooldown Configurado')
+    .setDescription(`El cooldown de bossfights ha sido actualizado a: **${hours} horas**`)
+    .addFields(
+      { name: 'Nota', value: 'Los jugadores deberán esperar este tiempo después de completar una bossfight antes de poder iniciar otra.', inline: false }
+    );
+
+  await message.channel.send({ embeds: [embed] });
+}
+
+async function handleCreateSkill(message, args) {
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden crear habilidades comunes.');
+  }
+
+  if (args.length < 4) {
+    return message.reply('❌ Uso: `*createskill "<nombre>" <tipo> <costo_sp> <daño> [efecto] [duración] [cooldown] [usa_hp]`\nEjemplo: `*createskill "Tarukaja" buff 20 0 atk_up 3 0 false`');
+  }
+
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const fullText = args.join(' ');
+  const match = fullText.match(/^"([^"]+)"\s+(\w+)\s+(\d+)\s+(\d+)(?:\s+(\w+))?(?:\s+(\d+))?(?:\s+(\d+))?(?:\s+(true|false))?$/);
+
+  if (!match) {
+    return message.reply('❌ Formato incorrecto. El nombre debe estar entre comillas.\nEjemplo: `*createskill "Tarukaja" buff 20 0 atk_up 3 0 false`');
+  }
+
+  const [, name, type, spCost, damage, effect, duration, cooldown, usesHp] = match;
+
+  const result = await bossfight.createCommonSkill(
+    guildId,
+    name,
+    type,
+    parseInt(spCost),
+    parseInt(damage),
+    effect || null,
+    parseInt(duration) || 0,
+    parseInt(cooldown) || 0,
+    usesHp === 'true'
+  );
+
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF00)
+    .setTitle('✅ Habilidad Común Creada')
+    .addFields(
+      { name: 'Nombre', value: result.skill.name, inline: true },
+      { name: 'Tipo', value: result.skill.type.toUpperCase(), inline: true },
+      { name: 'Costo', value: `${result.skill.spCost} ${result.skill.usesHp ? 'HP' : 'SP'}`, inline: true },
+      { name: 'Daño', value: `${result.skill.damage}`, inline: true },
+      { name: 'Efecto', value: result.skill.effect || 'Ninguno', inline: true },
+      { name: 'Cooldown', value: `${result.skill.cooldown} turnos`, inline: true }
+    );
+
+  message.reply({ embeds: [embed] });
+}
+
+async function handleListSkills(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const skills = await bossfight.getAllCommonSkills(guildId);
+
+  if (skills.length === 0) {
+    return message.reply('❌ No hay habilidades comunes configuradas.\n\nUsa `*createskill` para crear una.');
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('🔮 Habilidades Comunes')
+    .setDescription(skills.map(s => 
+      `**${s.name}** - Tipo: ${s.type.toUpperCase()} | Costo: ${s.spCost} ${s.usesHp ? 'HP' : 'SP'} | Daño: ${s.damage} | CD: ${s.cooldown}t`
+    ).join('\n'));
+
+  message.reply({ embeds: [embed] });
+}
+
+async function handleDeleteSkill(message, args) {
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden eliminar habilidades.');
+  }
+
+  if (args.length < 1) {
+    return message.reply('❌ Uso: `*deleteskill "<nombre>"`');
+  }
+
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const fullText = args.join(' ');
+  const match = fullText.match(/^"([^"]+)"$/);
+
+  if (!match) {
+    return message.reply('❌ El nombre de la habilidad debe estar entre comillas.');
+  }
+
+  const [, skillName] = match;
+
+  const result = await bossfight.deleteCommonSkill(guildId, skillName);
+
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+
+  message.reply(`✅ Habilidad **${skillName}** eliminada correctamente.`);
 }
 
 const token = process.env.DISCORD_TOKEN;

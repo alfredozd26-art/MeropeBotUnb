@@ -199,6 +199,50 @@ async function getAllCommonSkills(guildId) {
   return data.skills || [];
 }
 
+// Crear habilidad común
+async function createCommonSkill(guildId, name, type, spCost, damage, effect, duration, cooldown, usesHp) {
+  const skills = await getAllCommonSkills(guildId);
+  
+  if (skills.find(s => s.name.toLowerCase() === name.toLowerCase())) {
+    return { success: false, error: 'Ya existe una habilidad con ese nombre' };
+  }
+  
+  const skill = {
+    name,
+    type: type.toLowerCase(),
+    spCost,
+    damage,
+    effect: effect || null,
+    duration: duration || 0,
+    cooldown: cooldown || 0,
+    usesHp: usesHp || false
+  };
+  
+  skills.push(skill);
+  
+  const filePath = storage.getFilePath(guildId, 'common_skills');
+  await storage.writeJSON(filePath, { skills });
+  
+  return { success: true, skill };
+}
+
+// Eliminar habilidad común
+async function deleteCommonSkill(guildId, skillName) {
+  const skills = await getAllCommonSkills(guildId);
+  const skillIndex = skills.findIndex(s => s.name.toLowerCase() === skillName.toLowerCase());
+  
+  if (skillIndex === -1) {
+    return { success: false, error: 'Habilidad no encontrada' };
+  }
+  
+  skills.splice(skillIndex, 1);
+  
+  const filePath = storage.getFilePath(guildId, 'common_skills');
+  await storage.writeJSON(filePath, { skills });
+  
+  return { success: true };
+}
+
 // Crear boss
 async function createBoss(guildId, name, hp, atk, def, spd, type) {
   if (hp > 1000 || atk > 1000 || def > 1000 || spd > 1000) {
@@ -427,6 +471,8 @@ module.exports = {
   setCharacterReflect,
   equipSkill,
   getAllCommonSkills,
+  createCommonSkill,
+  deleteCommonSkill,
   createBoss,
   getAllBosses,
   editBoss,

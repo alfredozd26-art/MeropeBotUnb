@@ -2,7 +2,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const bossfight = require('./bossfight');
 
-const MAX_SESSIONS_PER_GUILD = 5;
+const MAX_SESSIONS_PER_GUILD = 6;
+const COMBAT_TIMEOUT = 90000; // 90 segundos
 const activeSessions = new Map();
 
 function getSessionKey(guildId, userId) {
@@ -85,7 +86,7 @@ function createCombatEmbed(session) {
         inline: true
       }
     )
-    .setFooter({ text: 'Tienes 60 segundos para actuar' });
+    .setFooter({ text: 'Tienes 90 segundos para actuar' });
   
   const buffsText = [];
   if (Object.keys(currentChar.buffs).length > 0) {
@@ -256,6 +257,7 @@ function regenerateSP(session) {
 
 module.exports = {
   MAX_SESSIONS_PER_GUILD,
+  COMBAT_TIMEOUT,
   canStartSession,
   createSession,
   getSession,
