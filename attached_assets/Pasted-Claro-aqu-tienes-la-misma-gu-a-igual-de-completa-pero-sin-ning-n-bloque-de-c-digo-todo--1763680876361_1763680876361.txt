@@ -1,0 +1,167 @@
+Claro, aquí tienes **la misma guía**, igual de completa, pero **sin ningún bloque de código**, todo en texto normal para copiarlo fácil.
+
+---
+
+# GUÍA COMPLETA DEL SISTEMA DE MINI BOSSFIGHTS (versión limpia para copiar)
+
+---
+
+## 1. Personajes (Players)
+
+Cada jugador puede crear personajes usando un comando como:
+*createchar <nombre> <HP> <ATK> <DEF> <SPD> <tipo>
+
+Stats básicos:
+
+* HP
+* ATK
+* DEF
+* SPD
+* Tipo/Elemento (Agi, Bufu, Zio, Eiga, Hama, Curse, etc.)
+* SP opcional (se asigna con *editbf sp <personaje> <valor>)
+
+Edición de stats:
+*editchar <personaje> hp/atk/def/spd/sp <valor>
+
+Debilidades, resistencias y reflect:
+*editbf deb <personaje> <tipo>
+*editbf resist <personaje> <tipo>
+*editbf reflect <personaje> <tipo> <porcentaje>
+
+Habilidades equipables para personajes (solo usan habilidades comunes):
+*equip <personaje> <habilidad>
+
+---
+
+## 2. Sistema de habilidades (para jugadores)
+
+Todas las habilidades tienen:
+
+* nombre
+* tipo (para debilidades/resistencias)
+* costo de SP
+* daño o porcentaje
+* duración de buffs/debuffs
+* cooldown
+* si gasta HP en vez de SP (para físicas)
+
+Tipos de habilidades comunes:
+
+* Buffs: subir ATK, DEF o SPD por X turnos
+* Debuffs al boss
+* Curación
+* Ataques físicos (gastan HP)
+* Ataques mágicos (gastan SP)
+
+---
+
+## 3. Bosses
+
+Creación del boss:
+*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>
+
+Edición general:
+*editboss <boss> hp/atk/def/spd <valor>
+*editboss <boss> deb <tipo>
+*editboss <boss> resist <tipo>
+*editboss <boss> reflect <tipo> <porcentaje>
+
+Habilidades personalizadas (solo de boss):
+*addskillboss <boss> "<nombre>" <tipo> <daño> <buff/debuff opcional> <cd>
+*deleteskillboss <boss> "<nombre>"
+
+Ejemplo de habilidad personalizada de boss:
+*addskillboss Yaldabaoth "Bloody Strike" eiga 160 atk_down 3
+
+---
+
+## 4. Sesiones de combate
+
+Se pueden activar o desactivar por servidor:
+*enablebf
+*disablebf
+
+Para evitar saturar la RAM, solo se permiten entre 3 y 5 sesiones de bossfight simultáneas por servidor.
+
+Cada sesión guarda:
+
+* Boss elegido
+* Jugadores y personajes activos (máximo 3 personajes por batalla)
+* Cooldowns
+* Buffs y debuffs
+* HP y SP actualizados
+
+Para iniciar una bossfight:
+*startbf <boss> <personaje1> <personaje2> <personaje3>
+
+Cuota de entrada:
+El bot verifica si el jugador tiene suficiente dinero en Unbelieva. Si no, no entra.
+
+---
+
+## 5. Turnos, UI y tiempo
+
+Cada turno se muestra una mini interfaz con:
+
+* HP del boss y del personaje
+* Acciones: atacar, habilidad, defender, rendirse
+* Descripción corta de cada habilidad
+* Todo usando botones de embed para hacerlo más compacto
+
+Tiempo límite:
+El jugador tiene 60 segundos para hacer una acción.
+Si no hace nada → derrota automática.
+Esto evita que las bossfights se queden colgadas.
+
+---
+
+## 6. Mecánicas de daño
+
+Daño base: ATK del atacante menos DEF del defensor.
+
+Modificadores por tipo:
+
+* Weak: 1.5x
+* Resist: 0.5x
+* Null: 0
+* Reflect: devuelve un porcentaje del daño al atacante
+
+Debuffs y buffs modifican los stats por un número de turnos.
+
+Habilidades físicas gastan HP.
+Habilidades mágicas gastan SP.
+
+Regeneración de SP: una pequeña cantidad cada 3 turnos.
+
+---
+
+## 7. Fin del combate
+
+Si el boss muere:
+Todos los jugadores reciben dinero desde Unbelieva.
+
+Si todos los personajes mueren:
+La batalla se pierde.
+
+Cooldown global por jugador para bossfights:
+24 horas para evitar abuso.
+
+---
+
+## 8. Seguridad y rendimiento
+
+* Cada bossfight es una sesión separada.
+* Se eliminan sesiones inactivas automáticamente.
+* Stats máximos permitidos: hasta 1000 (para dar mayor rango).
+* Máximo de 3 habilidades por boss.
+* Máximo 3 personajes por batalla.
+* Sistema optimizado para ahorrar RAM.
+
+---
+
+Si quieres, puedo convertir esto en:
+
+* Una versión mucho más corta
+* Una versión estilo documento oficial
+* Una versión paso a paso para implementar en Replit
+* O montarte la estructura base del proyecto para pegarla directo en Agent3.
