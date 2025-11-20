@@ -14,6 +14,44 @@ Bot de Discord tipo gacha desarrollado por Gina y amigos para un proyecto univer
 
 ## Cambios Recientes
 
+### Sistema de Mini Bossfights (Noviembre 20, 2025)
+- **Sistema completo de combate por turnos tipo RPG** estilo Persona 5
+- **Creación de personajes:** Los usuarios pueden crear sus propios personajes de combate
+  - Stats personalizables: HP, ATK, DEF, SPD, SP, Tipo elemental
+  - Sistema de debilidades, resistencias y reflejos
+  - Límite de stats: máximo 1000 por stat para balance
+- **Bosses configurables:** Administradores pueden crear bosses únicos
+  - Habilidades personalizadas con efectos y cooldowns
+  - Máximo 3 habilidades por boss
+  - Tipos elementales: Agi (fuego), Bufu (hielo), Zio (eléctrico), Eiga (oscuridad), Hama (luz), Curse (maldición), etc.
+- **Sistema de combate interactivo:**
+  - UI con botones de Discord (Atacar, Habilidad, Defender, Rendirse)
+  - Combate por turnos con límite de 60 segundos por acción
+  - Máximo 3 personajes por batalla
+  - Máximo 3-5 sesiones simultáneas por servidor
+  - Cálculo de daño con multiplicadores por tipo (weak: 1.5x, resist: 0.5x, reflect: devuelve daño)
+- **Buffs y Debuffs:**
+  - Modificadores de ATK, DEF, SPD
+  - Duración en turnos configurable
+  - Regeneración de SP cada 3 turnos
+- **Sistema económico integrado:**
+  - Cuota de entrada opcional (configurable con UnbelievaBoat)
+  - Recompensas por victoria (configurable)
+  - Cooldown de 24 horas por jugador para evitar abuso
+- **Comandos nuevos:**
+  - `*createchar <nombre> <HP> <ATK> <DEF> <SPD> <tipo>` - Crear personaje
+  - `*editchar <personaje> <campo> <valor>` - Editar stats
+  - `*editbf deb/resist/reflect <personaje> <tipo> [%]` - Configurar ventajas elementales
+  - `*equip <personaje> <habilidad>` - Equipar habilidades
+  - `*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>` - Crear boss (admin)
+  - `*editboss <boss> <campo> <valor>` - Editar boss (admin)
+  - `*addskillboss <boss> "<nombre>" <tipo> <daño> [efecto] [cd]` - Agregar habilidad a boss
+  - `*deleteskillboss <boss> "<nombre>"` - Eliminar habilidad
+  - `*enablebf` / `*disablebf` - Activar/desactivar sistema (admin)
+  - `*startbf <boss> <personaje1> [personaje2] [personaje3]` - Iniciar combate
+  - `*listchars` - Ver tus personajes
+  - `*listbosses` - Ver bosses disponibles
+
 ### Sistema de Venta de Items con UnbelievaBoat (Octubre 19, 2025)
 - **Integración con UnbelievaBoat API:** Los usuarios ahora pueden vender sus personas y objetos por dinero real en UnbelievaBoat
 - **Nuevo comando `*sell`:** Vende personas y objetos (NO personajes) de tu inventario
@@ -105,6 +143,9 @@ Maneja todos los datos del bot usando archivos JSON:
 - `{guildId}_tokens.json` - Tokens acumulados por usuario
 - `{guildId}_collectables.json` - Inventario de coleccionables
 - `{guildId}_exchanges.json` - Reglas de canje
+- `{guildId}_characters.json` - Personajes de combate por usuario
+- `{guildId}_bosses.json` - Bosses disponibles en el servidor
+- `{guildId}_common_skills.json` - Habilidades equipables
 
 ### Sistema de Comandos (index.js)
 - Prefijo: `*`
@@ -159,6 +200,10 @@ pm2 start index.js --name gacha-bot
 ✅ Sistema de venta de items con UnbelievaBoat implementado
 ✅ Campo "price" agregado a los items
 ✅ Comando *sell funcionando correctamente
+✅ Sistema de Mini Bossfights completo implementado
+✅ Combat por turnos con UI interactiva
+✅ Sistema de personajes y bosses configurables
+✅ Integración con UnbelievaBoat para recompensas
 ✅ Optimizado para Cyberpanel
 ✅ Sistema de almacenamiento JSON funcionando
 ✅ Todos los comandos funcionando correctamente

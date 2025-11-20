@@ -3,6 +3,8 @@ const dotenv = require('dotenv');
 const storage = require('./server/storage');
 const { searchItemByPartialName, searchItemByPartialNameSync } = require('./utils/itemSearch');
 const { Client: UnbClient } = require('unb-api');
+const bossfight = require('./server/bossfight');
+const combat = require('./server/combat');
 
 dotenv.config();
 
@@ -58,6 +60,15 @@ client.on('clientReady', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+  if (interaction.isButton()) {
+    try {
+      await handleCombatButton(interaction);
+    } catch (error) {
+      console.error('Error en botón de combate:', error);
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   try {
@@ -164,6 +175,32 @@ client.on('messageCreate', async (message) => {
       await handleSell(message, args);
     } else if (command === 'setcurrencyunb') {
       await handleSetCurrencyUnb(message, args);
+    } else if (command === 'createchar') {
+      await handleCreateChar(message, args);
+    } else if (command === 'editchar') {
+      await handleEditChar(message, args);
+    } else if (command === 'editbf') {
+      await handleEditBF(message, args);
+    } else if (command === 'equip') {
+      await handleEquip(message, args);
+    } else if (command === 'createboss') {
+      await handleCreateBoss(message, args);
+    } else if (command === 'editboss') {
+      await handleEditBoss(message, args);
+    } else if (command === 'addskillboss') {
+      await handleAddSkillBoss(message, args);
+    } else if (command === 'deleteskillboss') {
+      await handleDeleteSkillBoss(message, args);
+    } else if (command === 'enablebf') {
+      await handleEnableBF(message);
+    } else if (command === 'disablebf') {
+      await handleDisableBF(message);
+    } else if (command === 'startbf') {
+      await handleStartBF(message, args);
+    } else if (command === 'listchars') {
+      await handleListChars(message);
+    } else if (command === 'listbosses') {
+      await handleListBosses(message);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -2967,6 +3004,603 @@ async function handleGirar10Slash(interaction) {
   });
 
   await interaction.followUp({ embeds: [embed] });
+}
+
+async function handleCreateChar(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    return message.reply('❌ Necesitas permisos de administrador para crear personajes.');
+  }
+  
+  if (args.length < 6) {
+    return message.reply('❌ Uso: `*createchar <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`\nEjemplo: `*createchar Joker 500 120 80 100 curse`');
+  }
+  
+  const [name, hp, atk, def, spd, type] = args;
+  
+  const result = await bossfight.createCharacter(guildId, message.author.id, name, parseInt(hp), parseInt(atk), parseInt(def), parseInt(spd), type);
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  const embed = new EmbedBuilder()
+    .setColor(0x00FF00)
+    .setTitle('✅ Personaje Creado')
+    .addFields(
+      { name: 'Nombre', value: result.character.name, inline: true },
+      { name: 'HP', value: `${result.character.hp}`, inline: true },
+      { name: 'ATK', value: `${result.character.atk}`, inline: true },
+      { name: 'DEF', value: `${result.character.def}`, inline: true },
+      { name: 'SPD', value: `${result.character.spd}`, inline: true },
+      { name: 'Tipo', value: result.character.type.toUpperCase(), inline: true }
+    );
+  
+  message.reply({ embeds: [embed] });
+}
+
+async function handleEditChar(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    return message.reply('❌ Necesitas permisos de administrador.');
+  }
+  
+  if (args.length < 3) {
+    return message.reply('❌ Uso: `*editchar <personaje> <campo> <valor>`\nCampos: hp, atk, def, spd, sp\nEjemplo: `*editchar Joker hp 600`');
+  }
+  
+  const [charName, field, value] = args;
+  const result = await bossfight.editCharacter(guildId, message.author.id, charName, field.toLowerCase(), parseInt(value));
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ ${charName} actualizado: **${field.toUpperCase()}** = ${value}`);
+}
+
+async function handleEditBF(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    return message.reply('❌ Necesitas permisos de administrador.');
+  }
+  
+  if (args.length < 3) {
+    return message.reply('❌ Uso:\n`*editbf deb <personaje> <tipo>`\n`*editbf resist <personaje> <tipo>`\n`*editbf reflect <personaje> <tipo> <porcentaje>`');
+  }
+  
+  const [action, charName, type, percentage] = args;
+  let result;
+  
+  if (action === 'deb') {
+    result = await bossfight.setCharacterWeakness(guildId, message.author.id, charName, type);
+  } else if (action === 'resist') {
+    result = await bossfight.setCharacterResistance(guildId, message.author.id, charName, type);
+  } else if (action === 'reflect') {
+    if (!percentage) {
+      return message.reply('❌ Debes especificar el porcentaje de reflect.');
+    }
+    result = await bossfight.setCharacterReflect(guildId, message.author.id, charName, type, parseInt(percentage));
+  } else {
+    return message.reply('❌ Acción no válida. Usa: deb, resist, o reflect');
+  }
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ ${charName} actualizado correctamente.`);
+}
+
+async function handleEquip(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (args.length < 2) {
+    return message.reply('❌ Uso: `*equip <personaje> <habilidad>`');
+  }
+  
+  const [charName, ...skillParts] = args;
+  const skillName = skillParts.join(' ');
+  
+  const result = await bossfight.equipSkill(guildId, message.author.id, charName, skillName);
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ ${charName} ahora tiene equipada la habilidad **${skillName}**`);
+}
+
+async function handleCreateBoss(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden crear bosses.');
+  }
+  
+  if (args.length < 6) {
+    return message.reply('❌ Uso: `*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`\nEjemplo: `*createboss Yaldabaoth 800 150 100 90 eiga`');
+  }
+  
+  const [name, hp, atk, def, spd, type] = args;
+  const result = await bossfight.createBoss(guildId, name, parseInt(hp), parseInt(atk), parseInt(def), parseInt(spd), type);
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('👹 Boss Creado')
+    .addFields(
+      { name: 'Nombre', value: result.boss.name, inline: true },
+      { name: 'HP', value: `${result.boss.hp}`, inline: true },
+      { name: 'ATK', value: `${result.boss.atk}`, inline: true },
+      { name: 'DEF', value: `${result.boss.def}`, inline: true },
+      { name: 'SPD', value: `${result.boss.spd}`, inline: true },
+      { name: 'Tipo', value: result.boss.type.toUpperCase(), inline: true }
+    );
+  
+  message.reply({ embeds: [embed] });
+}
+
+async function handleEditBoss(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden editar bosses.');
+  }
+  
+  if (args.length < 3) {
+    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
+  }
+  
+  const [bossName, field, value, percentage] = args;
+  let result;
+  
+  if (field === 'deb') {
+    result = await bossfight.setBossWeakness(guildId, bossName, value);
+  } else if (field === 'resist') {
+    result = await bossfight.setBossResistance(guildId, bossName, value);
+  } else if (field === 'reflect') {
+    if (!percentage) {
+      return message.reply('❌ Debes especificar el porcentaje de reflect.');
+    }
+    result = await bossfight.setBossReflect(guildId, bossName, value, parseInt(percentage));
+  } else {
+    result = await bossfight.editBoss(guildId, bossName, field.toLowerCase(), parseInt(value));
+  }
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ Boss ${bossName} actualizado correctamente.`);
+}
+
+async function handleAddSkillBoss(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden agregar habilidades.');
+  }
+  
+  const fullText = args.join(' ');
+  const match = fullText.match(/^(.+?)\s+"([^"]+)"\s+(\w+)\s+(\d+)(?:\s+(\w+))?(?:\s+(\d+))?$/);
+  
+  if (!match) {
+    return message.reply('❌ Uso: `*addskillboss <boss> "<nombre>" <tipo> <daño> [efecto] [cooldown]`\nEjemplo: `*addskillboss Yaldabaoth "Bloody Strike" eiga 160 atk_down 3`');
+  }
+  
+  const [, bossName, skillName, type, damage, effect, cooldown] = match;
+  
+  const result = await bossfight.addBossSkill(guildId, bossName, skillName, type, parseInt(damage), effect || null, parseInt(cooldown) || 0);
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ Habilidad **${skillName}** agregada al boss ${bossName}`);
+}
+
+async function handleDeleteSkillBoss(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden eliminar habilidades.');
+  }
+  
+  if (args.length < 2) {
+    return message.reply('❌ Uso: `*deleteskillboss <boss> "<nombre>"`');
+  }
+  
+  const fullText = args.join(' ');
+  const match = fullText.match(/^(.+?)\s+"([^"]+)"$/);
+  
+  if (!match) {
+    return message.reply('❌ El nombre de la habilidad debe estar entre comillas.');
+  }
+  
+  const [, bossName, skillName] = match;
+  
+  const result = await bossfight.deleteBossSkill(guildId, bossName, skillName);
+  
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+  
+  message.reply(`✅ Habilidad **${skillName}** eliminada del boss ${bossName}`);
+}
+
+async function handleEnableBF(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden habilitar bossfights.');
+  }
+  
+  await storage.setConfig(guildId, 'bossfight_enabled', true);
+  message.reply('✅ Sistema de bossfights **activado** en este servidor.');
+}
+
+async function handleDisableBF(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden deshabilitar bossfights.');
+  }
+  
+  await storage.setConfig(guildId, 'bossfight_enabled', false);
+  message.reply('✅ Sistema de bossfights **desactivado** en este servidor.');
+}
+
+async function handleStartBF(message, args) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  const enabled = await storage.getConfig(guildId, 'bossfight_enabled');
+  if (!enabled) {
+    return message.reply('❌ El sistema de bossfights está desactivado. Un administrador debe usar `*enablebf` primero.');
+  }
+  
+  if (args.length < 2) {
+    return message.reply('❌ Uso: `*startbf <boss> <personaje1> [personaje2] [personaje3]`\nPuedes usar entre 1 y 3 personajes.');
+  }
+  
+  const now = Date.now();
+  const cooldown = 24 * 60 * 60 * 1000;
+  
+  const lastBF = await storage.getConfig(guildId, `bf_cooldown_${message.author.id}`);
+  if (lastBF) {
+    const timeLeft = lastBF - now;
+    if (timeLeft > 0) {
+      const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000));
+      return message.reply(`❌ Debes esperar **${hoursLeft} horas** antes de iniciar otra bossfight.`);
+    }
+  }
+  
+  if (!combat.canStartSession(guildId)) {
+    return message.reply(`❌ Este servidor ya tiene el máximo de ${combat.MAX_SESSIONS_PER_GUILD} bossfights activas. Espera a que termine alguna.`);
+  }
+  
+  const existingSession = combat.getSession(guildId, message.author.id);
+  if (existingSession) {
+    return message.reply('❌ Ya tienes una bossfight activa.');
+  }
+  
+  const [bossName, ...charNames] = args;
+  
+  if (charNames.length > 3) {
+    return message.reply('❌ Máximo 3 personajes por batalla.');
+  }
+  
+  const bosses = await bossfight.getAllBosses(guildId);
+  const boss = bosses.find(b => b.name.toLowerCase() === bossName.toLowerCase());
+  
+  if (!boss) {
+    return message.reply(`❌ Boss **${bossName}** no encontrado.`);
+  }
+  
+  const userChars = await bossfight.getAllCharacters(guildId, message.author.id);
+  const selectedChars = [];
+  
+  for (const charName of charNames) {
+    const char = userChars.find(c => c.name.toLowerCase() === charName.toLowerCase());
+    if (!char) {
+      return message.reply(`❌ Personaje **${charName}** no encontrado.`);
+    }
+    selectedChars.push(char);
+  }
+  
+  const entryFee = await storage.getConfig(guildId, 'bossfight_entry_fee') || 0;
+  
+  if (entryFee > 0) {
+    try {
+      const balance = await unbClient.getUserBalance(guildId, message.author.id);
+      if (balance.cash < entryFee) {
+        return message.reply(`❌ Necesitas **${entryFee}** monedas para entrar a la bossfight. Tienes **${balance.cash}**.`);
+      }
+      
+      await unbClient.editUserBalance(guildId, message.author.id, { cash: -entryFee, reason: 'Entrada a bossfight' });
+    } catch (error) {
+      console.error('Error verificando balance:', error);
+      return message.reply('❌ Error al verificar tu balance en UnbelievaBoat.');
+    }
+  }
+  
+  const session = combat.createSession(guildId, message.channel.id, message.author.id, boss, selectedChars);
+  
+  await storage.setConfig(guildId, `bf_cooldown_${message.author.id}`, now + cooldown);
+  
+  const embed = combat.createCombatEmbed(session);
+  const buttons = combat.createActionButtons(session);
+  
+  const sentMessage = await message.reply({ embeds: [embed], components: buttons });
+  session.messageId = sentMessage.id;
+  
+  setTimeout(async () => {
+    const currentSession = combat.getSession(guildId, message.author.id);
+    if (currentSession && currentSession.messageId === sentMessage.id) {
+      combat.deleteSession(guildId, message.author.id);
+      await message.channel.send(`⏰ ${message.author}, tu tiempo se agotó. **Derrota automática**.`);
+    }
+  }, 60000);
+}
+
+async function handleCombatButton(interaction) {
+  const guildId = interaction.guild?.id;
+  if (!guildId) return;
+  
+  const session = combat.getSession(guildId, interaction.user.id);
+  
+  if (!session) {
+    return interaction.reply({ content: '❌ No tienes una bossfight activa.', ephemeral: true });
+  }
+  
+  if (interaction.message.id !== session.messageId) {
+    return interaction.reply({ content: '❌ Esta no es tu bossfight activa.', ephemeral: true });
+  }
+  
+  await interaction.deferUpdate();
+  
+  const currentChar = session.characters[session.currentCharIndex];
+  const boss = session.boss;
+  
+  let playerAction = '';
+  let playerDamage = 0;
+  
+  if (interaction.customId === 'combat_attack') {
+    const stats = combat.applyBuffs(currentChar);
+    const dmgResult = bossfight.calculateDamage(
+      stats,
+      boss,
+      {
+        weaknesses: boss.weaknesses,
+        resistances: boss.resistances,
+        reflects: boss.reflects
+      }
+    );
+    
+    boss.hp -= dmgResult.damage;
+    if (boss.hp < 0) boss.hp = 0;
+    
+    if (dmgResult.isReflect) {
+      currentChar.currentHp -= dmgResult.reflected;
+      if (currentChar.currentHp < 0) currentChar.currentHp = 0;
+    }
+    
+    playerAction = `**${currentChar.name}** atacó`;
+    playerDamage = dmgResult.damage;
+    
+  } else if (interaction.customId === 'combat_skill') {
+    if (currentChar.skills.length === 0) {
+      return interaction.followUp({ content: '❌ No tienes habilidades equipadas.', ephemeral: true });
+    }
+    
+    const skills = await bossfight.getAllCommonSkills(guildId);
+    const availableSkills = currentChar.skills
+      .map(skillName => skills.find(s => s.name === skillName))
+      .filter(skill => skill && (!currentChar.cooldowns[skill.name] || currentChar.cooldowns[skill.name] <= 0));
+    
+    if (availableSkills.length === 0) {
+      return interaction.followUp({ content: '❌ Todas tus habilidades están en cooldown.', ephemeral: true });
+    }
+    
+    const skill = availableSkills[0];
+    
+    if (skill.usesHp && currentChar.currentHp < skill.spCost) {
+      return interaction.followUp({ content: `❌ No tienes suficiente HP para usar **${skill.name}** (${skill.spCost} HP requerido).`, ephemeral: true });
+    }
+    
+    if (!skill.usesHp && currentChar.currentSp < skill.spCost) {
+      return interaction.followUp({ content: `❌ No tienes suficiente SP para usar **${skill.name}** (${skill.spCost} SP requerido).`, ephemeral: true });
+    }
+    
+    if (skill.usesHp) {
+      currentChar.currentHp -= skill.spCost;
+    } else {
+      currentChar.currentSp -= skill.spCost;
+    }
+    
+    if (skill.damage > 0) {
+      const stats = combat.applyBuffs(currentChar);
+      const dmgResult = bossfight.calculateDamage(
+        stats,
+        boss,
+        {
+          skillType: skill.type,
+          skillDamage: skill.damage,
+          weaknesses: boss.weaknesses,
+          resistances: boss.resistances,
+          reflects: boss.reflects
+        }
+      );
+      
+      boss.hp -= dmgResult.damage;
+      if (boss.hp < 0) boss.hp = 0;
+      
+      if (dmgResult.isReflect) {
+        currentChar.currentHp -= dmgResult.reflected;
+        if (currentChar.currentHp < 0) currentChar.currentHp = 0;
+      }
+      
+      playerDamage = dmgResult.damage;
+    }
+    
+    if (skill.effect) {
+      const [effectType, effectTarget] = skill.effect.split('_');
+      if (effectTarget === 'up') {
+        currentChar.buffs[skill.effect] = skill.duration || 3;
+      } else if (effectTarget === 'down') {
+        session.bossDebuffs[skill.effect] = skill.duration || 3;
+      } else if (skill.effect === 'heal') {
+        const healAmount = skill.damage;
+        currentChar.currentHp = Math.min(currentChar.currentHp + healAmount, currentChar.maxHp);
+      }
+    }
+    
+    if (skill.cooldown > 0) {
+      currentChar.cooldowns[skill.name] = skill.cooldown;
+    }
+    
+    playerAction = `**${currentChar.name}** usó **${skill.name}**`;
+    
+  } else if (interaction.customId === 'combat_defend') {
+    currentChar.buffs.def_up = 1;
+    playerAction = `**${currentChar.name}** se defiende (+30% DEF)`;
+    
+  } else if (interaction.customId === 'combat_surrender') {
+    combat.deleteSession(guildId, interaction.user.id);
+    const embed = new EmbedBuilder()
+      .setColor(0x808080)
+      .setTitle('🏳️ Rendición')
+      .setDescription(`${interaction.user} se ha rendido. La bossfight ha terminado.`);
+    return interaction.editReply({ embeds: [embed], components: [] });
+  }
+  
+  if (boss.hp <= 0) {
+    combat.deleteSession(guildId, interaction.user.id);
+    
+    const rewards = await storage.getConfig(guildId, 'bossfight_rewards') || 1000;
+    
+    try {
+      await unbClient.editUserBalance(guildId, interaction.user.id, { cash: rewards, reason: `Victoria contra ${boss.name}` });
+    } catch (error) {
+      console.error('Error otorgando recompensa:', error);
+    }
+    
+    const embed = new EmbedBuilder()
+      .setColor(0x00FF00)
+      .setTitle('🎉 ¡VICTORIA!')
+      .setDescription(`¡Has derrotado a **${boss.name}**!\n\n💰 Recompensa: **${rewards}** monedas`)
+      .addFields({ name: 'Acción final', value: playerAction, inline: false });
+    
+    return interaction.editReply({ embeds: [embed], components: [] });
+  }
+  
+  const bossAction = combat.performBossAction(session);
+  
+  if (currentChar.currentHp <= 0) {
+    session.currentCharIndex++;
+    
+    if (session.currentCharIndex >= session.characters.length) {
+      combat.deleteSession(guildId, interaction.user.id);
+      
+      const embed = new EmbedBuilder()
+        .setColor(0xFF0000)
+        .setTitle('💀 DERROTA')
+        .setDescription(`Todos tus personajes han caído ante **${boss.name}**.`);
+      
+      return interaction.editReply({ embeds: [embed], components: [] });
+    }
+  }
+  
+  combat.decrementBuffsDebuffs(currentChar);
+  combat.decrementBuffsDebuffs({ buffs: session.bossBuffs, debuffs: session.bossDebuffs });
+  
+  if (currentChar.cooldowns) {
+    for (const skill in currentChar.cooldowns) {
+      currentChar.cooldowns[skill]--;
+      if (currentChar.cooldowns[skill] <= 0) {
+        delete currentChar.cooldowns[skill];
+      }
+    }
+  }
+  
+  const spRegen = combat.regenerateSP(session);
+  
+  session.turn++;
+  session.lastActionTime = Date.now();
+  
+  const combatLog = `${playerAction}${playerDamage > 0 ? ` (${playerDamage} daño)` : ''}\n**${boss.name}** ${bossAction.action} (${bossAction.damage} daño)${spRegen ? '\n🔮 +10 SP regenerados' : ''}`;
+  
+  const embed = combat.createCombatEmbed(session);
+  embed.addFields({ name: '📜 Último turno', value: combatLog, inline: false });
+  
+  const buttons = combat.createActionButtons(session);
+  
+  await interaction.editReply({ embeds: [embed], components: buttons });
+  
+  setTimeout(async () => {
+    const currentSession = combat.getSession(guildId, interaction.user.id);
+    if (currentSession && currentSession.messageId === interaction.message.id && currentSession.turn === session.turn) {
+      combat.deleteSession(guildId, interaction.user.id);
+      await interaction.channel.send(`⏰ ${interaction.user}, tu tiempo se agotó. **Derrota automática**.`);
+    }
+  }, 60000);
+}
+
+async function handleListChars(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  const chars = await bossfight.getAllCharacters(guildId, message.author.id);
+  
+  if (chars.length === 0) {
+    return message.reply('❌ No tienes personajes creados. Usa `*createchar` para crear uno.');
+  }
+  
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('⚔️ Tus Personajes')
+    .setDescription(chars.map(c => 
+      `**${c.name}** - HP: ${c.hp} | ATK: ${c.atk} | DEF: ${c.def} | SPD: ${c.spd} | Tipo: ${c.type.toUpperCase()}`
+    ).join('\n'));
+  
+  message.reply({ embeds: [embed] });
+}
+
+async function handleListBosses(message) {
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+  
+  const bosses = await bossfight.getAllBosses(guildId);
+  
+  if (bosses.length === 0) {
+    return message.reply('❌ No hay bosses configurados.');
+  }
+  
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('👹 Bosses Disponibles')
+    .setDescription(bosses.map(b => 
+      `**${b.name}** - HP: ${b.hp} | ATK: ${b.atk} | DEF: ${b.def} | SPD: ${b.spd} | Tipo: ${b.type.toUpperCase()}`
+    ).join('\n'));
+  
+  message.reply({ embeds: [embed] });
 }
 
 const token = process.env.DISCORD_TOKEN;
