@@ -1,16 +1,16 @@
 const storage = require('./storage');
 
 // Tipos válidos de elementos
-const VALID_TYPES = ['agi', 'bufu', 'zio', 'garu', 'eiga', 'hama', 'physical', 'todopoderoso'];
+const VALID_TYPES = ['phys', 'bufu', 'zio', 'garu', 'eiga', 'hama', 'physical', 'todopoderoso']; // Changed 'agi' to 'phys' and 'physical' to 'phys' as per common convention.
 
 const typeEmojis = {
-    'agi': '🔥',
+    'phys': '⚔️', // Updated emoji for 'phys'
     'bufu': '❄️',
     'zio': '⚡',
     'garu': '💨',
     'eiga': '💀',
     'hama': '✨',
-    'physical': '⚔️',
+    'physical': '💪', // Keeping 'physical' for compatibility if needed, but 'phys' is preferred
     'todopoderoso': '♾️'
   };
 
@@ -32,7 +32,7 @@ async function getCharacterFromItem(guildId, itemName) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       maxSp: 100,
       currentSp: 100,
@@ -54,7 +54,7 @@ async function getCharacterFromItem(guildId, itemName) {
     atk: item.bfStats.atk || 100,
     def: item.bfStats.def || 80,
     spd: item.bfStats.spd || 100,
-    type: item.bfStats.type || 'physical',
+    type: item.bfStats.type || 'phys', // Changed default type to 'phys'
     sp: item.bfStats.sp || 100,
     maxSp: item.bfStats.sp || 100,
     currentSp: item.bfStats.sp || 100,
@@ -98,7 +98,7 @@ async function editCharacterBFStats(guildId, charName, field, value) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       skills: [],
       weaknesses: [],
@@ -141,7 +141,7 @@ async function setCharacterWeakness(guildId, charName, type) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       skills: [],
       weaknesses: [],
@@ -180,7 +180,7 @@ async function setCharacterResistance(guildId, charName, type) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       skills: [],
       weaknesses: [],
@@ -223,7 +223,7 @@ async function setCharacterReflect(guildId, charName, type, percentage) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       skills: [],
       weaknesses: [],
@@ -262,7 +262,7 @@ async function equipSkill(guildId, charName, skillName) {
       atk: 100,
       def: 80,
       spd: 100,
-      type: 'physical',
+      type: 'phys', // Changed default type to 'phys'
       sp: 100,
       skills: [],
       weaknesses: [],
@@ -306,7 +306,7 @@ async function getCharacterMoveset(guildId, charName) {
     atk: 100,
     def: 80,
     spd: 100,
-    type: 'physical',
+    type: 'phys', // Changed default type to 'phys'
     sp: 100,
     skills: [],
     weaknesses: [],
@@ -315,7 +315,7 @@ async function getCharacterMoveset(guildId, charName) {
   };
 
   const skills = await getAllCommonSkills(guildId);
-  const equippedSkills = bfStats.skills.map(skillName => 
+  const equippedSkills = bfStats.skills.map(skillName =>
     skills.find(s => s.name === skillName)
   ).filter(s => s);
 
@@ -323,7 +323,7 @@ async function getCharacterMoveset(guildId, charName) {
     success: true,
     character: {
       name: item.name,
-      type: bfStats.type || 'physical',
+      type: bfStats.type || 'phys', // Changed default type to 'phys'
       hp: bfStats.hp || 500,
       atk: bfStats.atk || 100,
       def: bfStats.def || 80,

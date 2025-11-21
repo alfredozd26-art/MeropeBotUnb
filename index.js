@@ -1812,74 +1812,86 @@ async function handleFixHelp(message) {
     return message.reply('❌ Solo administradores pueden usar este comando. Usa `*help` para ver los comandos disponibles.');
   }
 
-  const embed = new EmbedBuilder()
+  const embed1 = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle('<:dogsuke:1425324917854834708> Comandos del Gacha Bot <:dogsuke:1425324917854834708>')
+    .setTitle('<:dogsuke:1425324917854834708> Comandos del Gacha Bot (1/3) <:dogsuke:1425324917854834708>')
     .setDescription('Aquí está la lista completa de comandos disponibles:')
     .addFields(
       {
         name: '🎰 Comandos de Juego',
-        value: '**`*spin`** - Hacer un spin del gacha (requiere Ticket)\n**`*spin10`** - Hacer 10 spins del gacha (requiere Ticket x10)\n**`*banner`** - Ver el banner actual con probabilidades\n**`*pity`** - Ver tu contador de pity actual',
+        value: '`*spin` - Hacer un spin del gacha (requiere Ticket)\n`*spin10` - Hacer 10 spins del gacha (requiere Ticket x10)\n`*banner` - Ver el banner actual con probabilidades\n`*pity` - Ver tu contador de pity actual',
         inline: false
       },
       {
         name: '🎒 Comandos de Inventario',
-        value: '**`*tokens`** - Ver tus Tokens acumulados\n**`*inventory`** - Ver tus premios y objetos coleccionables\n**`*canjear <ID>`** - Canjear Tokens por recompensas\n**`*listexchanges`** - Ver canjes disponibles',
+        value: '`*tokens` - Ver tus Tokens acumulados\n`*inventory` - Ver tus premios y objetos coleccionables\n`*canjear <ID>` - Canjear Tokens por recompensas\n`*listexchanges` - Ver canjes disponibles',
         inline: false
       },
       {
         name: '⚙️ Comandos Admin - Crear Items',
-        value: '**`*createitem <nombre>`** - Crear premio\n**`*createitemsecret <nombre>`** - Crear secreto 🔒\n**`*deleteitem <nombre>`** - Eliminar premio\n**`*resetitems`** - Eliminar todos\n**`*iteminfo <nombre>`** - Ver info\n**`*secretbanner`** - Ver secretos 🔒',
+        value: '`*createitem <nombre>` - Crear premio\n`*createitemsecret <nombre>` - Crear secreto 🔒\n`*deleteitem <nombre>` - Eliminar premio\n`*resetitems` - Eliminar todos\n`*iteminfo <nombre>` - Ver info\n`*secretbanner` - Ver secretos 🔒',
         inline: false
       },
       {
-        name: '⚙️ Comandos Admin - Editar Items (Parte 1)',
-        value: '**`*edititem <nombre> <campo> <valor>`**\n\n**Campos básicos:**\n`*edititem Joker rarity SSR`\n`*edititem Joker chance 5`\n`*edititem Joker reply https://imagen.gif`\n`*edititem Joker tokens si`\n`*edititem Joker role-given @NombreRol`',
+        name: '⚙️ Comandos Admin - Editar Items',
+        value: '`*edititem <nombre> <campo> <valor>`\nCampos: rarity, chance, reply, tokens, role-given, promo, secret, collectable, name, price, bfstats, replycollectable1/2/3',
         inline: false
       },
       {
-        name: '⚙️ Comandos Admin - Editar Items (Parte 2)',
-        value: '**Campos avanzados:**\n`*edititem Joker promo true`\n`*edititem Joker secret true` 🔒\n`*edititem Joker collectable 5`\n`*edititem Joker name "Nuevo Nombre"`\n`*edititem Joker object persona`',
+        name: '⚙️ Tokens & Coleccionables',
+        value: '`*addtokens <usuario> <cantidad><rareza>` - Dar tokens\n`*removetokens <usuario> <cantidad><rareza>` - Quitar tokens\n`*resettokens` - Resetear tokens de todos\n`*resetcollectable <item> <usuario>` - Resetear coleccionables',
         inline: false
       },
       {
-        name: '⚙️ Comandos Admin - Replies Coleccionables',
-        value: '**Configurar replies aleatorios:**\n`*edititem Joker replycollectable1 <url>`\n`*edititem Joker replycollectable2 <url>`\n`*edititem Joker replycollectable3 <url>`',
+        name: '⚙️ Canjes',
+        value: '`*createexchange <nombre>` - Crear canje\n`*editexchange <id> price <tokens>` - Editar precios\n`*editexchange <id> role <rol>` - Asignar rol\n`*resetexchanges` - Eliminar todos los canjes',
+        inline: false
+      }
+    );
+
+  const embed2 = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('<:dogsuke:1425324917854834708> Comandos del Gacha Bot (2/3) <:dogsuke:1425324917854834708>')
+    .addFields(
+      {
+        name: '⚙️ Configuración',
+        value: '`*setticketrole <rol>` - Configurar rol de ticket para *spin\n`*setticketrole10 <rol>` - Configurar rol de ticket para *spin10\n`*editpull <url_gif>` - Configurar GIF de tirada normal\n`*editpullssr <url_gif>` - Configurar GIF para SSR/Promocional\n`*editpulltimer <ms>` - Configurar duración del GIF\n`*editpity <número>` - Configurar pity SSR asegurado\n`*setcurrency <emoji>` - Configurar emoji del título de tokens\n`*setcurrencyunb <emoji>` - Configurar emoji de moneda UnbelievaBoat',
         inline: false
       },
       {
-        name: '⚙️ Comandos de Administración - Tokens & Coleccionables',
-        value: '**`*addtokens <@usuario> <cantidad><rareza>`** - Dar tokens a un usuario\nEjemplo: `*addtokens @Juan 5SSR`\n\n**`*removetokens <@usuario> <cantidad><rareza>`** - Quitar tokens\nEjemplo: `*removetokens @Juan 2SR`\n\n**`*resettokens`** - Resetear tokens de todos (requiere confirmación)\n**`*resetcollectable <item> <@usuario>`** - Resetear coleccionables de un item\nEjemplo: `*resetcollectable Cuerpo santo @Juan`',
+        name: '⚔️ Bossfight - Personajes',
+        value: '`*editbf <personaje> <campo> <valor>` - Editar stats (hp, atk, def, spd, sp, type)\n`*editbf deb <personaje> <tipo>` - Configurar debilidad\n`*editbf resist <personaje> <tipo>` - Configurar resistencia\n`*editbf reflect <personaje> <tipo> <%>` - Configurar reflect\n`*equip <personaje> <habilidad>` - Equipar habilidad (máx 3)\n`*mv <personaje>` - Ver stats completos y moveset',
         inline: false
       },
       {
-        name: '⚙️ Comandos de Administración - Canjes',
-        value: '**`*createexchange <nombre>`** - Crear un nuevo canje\nEjemplo: `*createexchange Spin Gratis`\n\n**`*editexchange <id> price <tokens>`** - Editar precios del canje\nEjemplo: `*editexchange 1 price 1SSR 3SR 10UR 40R`\n\n**`*editexchange <id> role <rol>`** - Asignar rol al canje\nEjemplo: `*editexchange 1 role @Ticket`\n\n**`*resetexchanges`** - Eliminar todos los canjes',
+        name: '⚔️ Bossfight - Bosses',
+        value: '`*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>` - Crear boss\n`*editboss <boss> <campo> <valor>` - Editar stats (hp, atk, def, spd)\n`*editboss <boss> reward <cantidad>` - Configurar recompensa en monedas\n`*editboss <boss> difficulty <nivel>` - Configurar dificultad (facil, normal, dificil, extremo)\n`*editboss <boss> deb/resist <tipo>` - Configurar debilidad/resistencia\n`*editboss <boss> reflect <tipo> <%>` - Configurar reflect\n`*listbosses` - Ver bosses disponibles',
         inline: false
       },
       {
-        name: '⚙️ Comandos de Configuración',
-        value: '**`*setticketrole <rol>`** - Configurar rol de ticket para `*spin`\n**`*setticketrole10 <rol>`** - Configurar rol de ticket para `*spin10`\n**`*editpull <url_gif>`** - Configurar GIF de tirada normal\n**`*editpull remove`** - Quitar GIF de tirada normal\n**`*editpullssr <url_gif>`** - Configurar GIF para SSR/Promocional\n**`*editpullssr remove`** - Quitar GIF de SSR/Promocional\n**`*editpulltimer <milisegundos>`** - Configurar duración del GIF (ej: 5000 = 5s)\n**`*editpulltimer`** - Ver timer actual\n**`*editpulltimer reset`** - Resetear timer a 11.5s\n**`*editpity <número>`** - Configurar en qué tirada es el SSR asegurado (ej: 100)\n**`*editpity`** - Ver pity actual\n**`*editpity reset`** - Resetear pity a 90\n**`*setcurrency <emoji>`** - Configurar emoji del título de tokens\n**`*setcurrencyunb <emoji>`** - Configurar emoji de moneda UnbelievaBoat\n**`*setcurrencyunb reset`** - Usar emoji por defecto de UnbelievaBoat',
+        name: '⚔️ Bossfight - Habilidades Boss',
+        value: '`*addskillboss <boss> "<nombre>" <tipo> <daño> [efecto] [cd]` - Agregar habilidad\n`*deleteskillboss <boss> "<nombre>"` - Eliminar habilidad',
+        inline: false
+      }
+    );
+
+  const embed3 = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle('<:dogsuke:1425324917854834708> Comandos del Gacha Bot (3/3) <:dogsuke:1425324917854834708>')
+    .addFields(
+      {
+        name: '⚔️ Bossfight - Habilidades Comunes',
+        value: '`*createskill "<nombre>" <tipo> <costo_sp> <daño> [efecto] [duración] [cd] [usa_hp]`\n`*listskills` - Ver habilidades comunes\n`*deleteskill "<nombre>"` - Eliminar habilidad común',
         inline: false
       },
       {
-        name: '⚔️ Sistema de Bossfight - Personajes',
-        value: '**`*editbf <personaje> <campo> <valor>`** (SOLO ADMIN) - Editar stats de combate\nCampos: hp, atk, def, spd, sp, type\nEjemplo: `*editbf Joker hp 600` o `*editbf Joker type curse`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** (SOLO ADMIN) - Equipar habilidad (máx 3)\n**`*mv <personaje>`** o **`*moveset <personaje>`** - Ver stats completos y moveset\n\n**Tipos válidos:** agi, bufu, zio, eiga, hama, curse, physical, almighty',
+        name: '⚔️ Bossfight - Combate',
+        value: '`*enablebf` - Activar bossfights (ADMIN)\n`*disablebf` - Desactivar bossfights (ADMIN)\n`*startbf <boss> <personaje1> [personaje2] [personaje3]` - Iniciar combate\n`*editcdbf <horas>` - Configurar cooldown de bossfights (ADMIN)\n`*mv` - Ver tabla de tipos de ataque\n\nMáximo 6 bossfights simultáneas por servidor. Timeout: 90 segundos por turno.',
         inline: false
       },
       {
-        name: '⚔️ Sistema de Bossfight - Bosses',
-        value: '**`*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`** - Crear boss\nEjemplo: `*createboss Yaldabaoth 800 150 100 90 eiga`\n\n**`*editboss <boss> <campo> <valor>`** - Editar stats\nCampos: hp, atk, def, spd\n\n**`*editboss <boss> deb <tipo>`** - Configurar debilidad\n**`*editboss <boss> resist <tipo>`** - Configurar resistencia\n**`*editboss <boss> reflect <tipo> <porcentaje>`** - Configurar reflect\n\n**`*addskillboss <boss> "<nombre>" <tipo> <daño> [efecto] [cd]`** - Agregar habilidad\nEjemplo: `*addskillboss Yaldabaoth "Bloody Strike" eiga 160 atk_down 3`\n\n**`*deleteskillboss <boss> "<nombre>"`** - Eliminar habilidad\n**`*listbosses`** - Ver bosses disponibles',
-        inline: false
-      },
-      {
-        name: '⚔️ Sistema de Bossfight - Habilidades Comunes',
-        value: '**`*createskill "<nombre>" <tipo> <costo_sp> <daño> [efecto] [duración] [cd] [usa_hp]`**\nEjemplo: `*createskill "Tarukaja" buff 20 0 atk_up 3 0 false`\n\n**`*listskills`** - Ver habilidades comunes\n**`*deleteskill "<nombre>"`** - Eliminar habilidad común',
-        inline: false
-      },
-      {
-        name: '⚔️ Sistema de Bossfight - Combate',
-        value: '**`*enablebf`** - Activar bossfights en el servidor (ADMIN)\n**`*disablebf`** - Desactivar bossfights en el servidor (ADMIN)\n\n**`*startbf <boss> <personaje1> [personaje2] [personaje3]`** - Iniciar combate\nEjemplo: `*startbf Yaldabaoth Joker Ryuji Ann`\n\n**`*listbosses`** - Ver bosses disponibles\n**`*mv`** - Ver tabla de tipos de ataque\n\n**`*editcdbf <horas>`** - Configurar cooldown de bossfights (ADMIN)\nEjemplo: `*editcdbf 4` (4 horas)\n**`*editcdbf`** - Ver cooldown actual\n**`*editcdbf reset`** - Resetear a 24h\n\n**Nota:** Máximo 6 bossfights simultáneas por servidor. Timeout: 90 segundos por turno. Durante el combate usa los botones: Atacar, Habilidad, Defender, Rendirse.',
+        name: '⚔️ Tipos de Ataque',
+        value: '🔥 FIRE | ❄️ ICE | ⚡ ELEC | 💨 WIND | 💀 DARK | ✨ LIGHT | ⚔️ PHYS | 🧠 PSI | ☢️ NUK | ♾️ ALM',
         inline: false
       },
       {
@@ -1891,7 +1903,9 @@ async function handleFixHelp(message) {
     .setFooter({ text: 'Usa *fixhelp para ver este menú en cualquier momento' });
 
   if (message.channel.isSendable()) {
-    await message.channel.send({ embeds: [embed] });
+    await message.channel.send({ embeds: [embed1] });
+    await message.channel.send({ embeds: [embed2] });
+    await message.channel.send({ embeds: [embed3] });
   }
 }
 
@@ -3916,14 +3930,16 @@ async function handleMoveTypes(message) {
     .setTitle('⚔️ Tabla de Tipos de Ataque')
     .setDescription('Lista completa de tipos elementales disponibles en el sistema de combate:')
     .addFields(
-      { name: '🔥 Agi', value: 'Fuego', inline: true },
-      { name: '❄️ Bufu', value: 'Hielo', inline: true },
-      { name: '⚡ Zio', value: 'Eléctrico', inline: true },
-      { name: '💨 Garu', value: 'Viento', inline: true },
-      { name: '💀 Eiga', value: 'Maldición', inline: true },
-      { name: '✨ Hama', value: 'Luz', inline: true },
-      { name: '⚔️ Physical', value: 'Físico', inline: true },
-      { name: '♾️ Todo Poderoso', value: 'Sin debilidades', inline: true }
+      { name: '🔥 FIRE', value: 'Fuego', inline: true },
+      { name: '❄️ ICE', value: 'Hielo', inline: true },
+      { name: '⚡ ELEC', value: 'Eléctrico', inline: true },
+      { name: '💨 WIND', value: 'Viento', inline: true },
+      { name: '💀 DARK', value: 'Oscuridad', inline: true },
+      { name: '✨ LIGHT', value: 'Luz', inline: true },
+      { name: '⚔️ PHYS', value: 'Físico', inline: true },
+      { name: '🧠 PSI', value: 'Psíquico', inline: true },
+      { name: '☢️ NUK', value: 'Nuclear', inline: true },
+      { name: '♾️ ALM', value: 'Todo Poderoso', inline: true }
     )
 
   await message.reply({ embeds: [embed] });
