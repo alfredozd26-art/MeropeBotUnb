@@ -1790,6 +1790,11 @@ async function handleHelp(message) {
         inline: false
       },
       {
+        name: '⚔️ Comandos de Combate',
+        value: '**`*startbf <boss> <personaje1> [personaje2] [personaje3]`** - Iniciar bossfight\n**`*listbosses`** - Ver bosses disponibles\n**`*mv`** - Ver tipos de ataque disponibles',
+        inline: false
+      },
+      {
         name: 'ℹ️ Sistema de Rarezas',
         value: '<:SSRTK:1425246335472369857> - Super Super Raro (5★)\n<:SRTK:1425246269307359395> - Super Raro (4★)\n<:URTK:1425246198071033906> - Ultra Raro (3★)\n<:RTK:1425246396654682272> - Raro (2★)\n\n⭐ = Personaje Promocional (Banner)',
         inline: false
@@ -1874,7 +1879,7 @@ async function handleFixHelp(message) {
       },
       {
         name: '⚔️ Sistema de Bossfight - Combate',
-        value: '**`*enablebf`** - Activar bossfights en el servidor\n**`*disablebf`** - Desactivar bossfights en el servidor\n**`*startbf <boss> <personaje1> [personaje2] [personaje3]`** - Iniciar combate\nEjemplo: `*startbf Yaldabaoth Joker Ryuji Ann`\n\n**`*editcdbf <horas>`** - Configurar cooldown de bossfights\nEjemplo: `*editcdbf 4` (4 horas)\n**`*editcdbf`** - Ver cooldown actual\n**`*editcdbf reset`** - Resetear a 24h\n\n**Nota:** Máximo 6 bossfights simultáneas por servidor. Timeout: 90 segundos por turno.',
+        value: '**`*enablebf`** - Activar bossfights en el servidor (ADMIN)\n**`*disablebf`** - Desactivar bossfights en el servidor (ADMIN)\n\n**`*startbf <boss> <personaje1> [personaje2] [personaje3]`** - Iniciar combate\nEjemplo: `*startbf Yaldabaoth Joker Ryuji Ann`\n\n**`*listbosses`** - Ver bosses disponibles\n**`*mv`** - Ver tabla de tipos de ataque\n\n**`*editcdbf <horas>`** - Configurar cooldown de bossfights (ADMIN)\nEjemplo: `*editcdbf 4` (4 horas)\n**`*editcdbf`** - Ver cooldown actual\n**`*editcdbf reset`** - Resetear a 24h\n\n**Nota:** Máximo 6 bossfights simultáneas por servidor. Timeout: 90 segundos por turno. Durante el combate usa los botones: Atacar, Habilidad, Defender, Rendirse.',
         inline: false
       },
       {
