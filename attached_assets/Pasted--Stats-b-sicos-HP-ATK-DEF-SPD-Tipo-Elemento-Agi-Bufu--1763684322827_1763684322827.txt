@@ -1,0 +1,193 @@
+
+
+```
+### **Stats básicos**
+
+* **HP**
+* **ATK**
+* **DEF**
+* **SPD**
+* **Tipo/Elemento** (Agi, Bufu, Zio, Eiga, Hama, Curse, etc.)
+* **SP** opcional → se asigna con:
+
+  ```
+  *editbf sp <personaje> <valor>
+  ```
+
+### **Edición**
+
+```
+*editchar <personaje> hp/atk/def/spd/sp <valor>
+```
+
+### **Debilidades / Resistencias / Reflect**
+
+```
+*editbf deb <personaje> <tipo>
+*editbf resist <personaje> <tipo>
+*editbf reflect <personaje> <tipo> <porcentaje>
+```
+
+### **Habilidades equipables**
+
+Los personajes **solo usan habilidades comunes**.
+Se equipan con:
+
+```
+*equip <personaje> <habilidad>
+```
+
+---
+
+# **2. Sistema de Habilidades (para jugadores)**
+
+Todas las habilidades tienen:
+
+* **Nombre**
+* **Tipo** (para aplicar debilidades/resistencias)
+* **Costo SP**
+* **Daño o porcentaje**
+* **Duración de buffs/debuffs**
+* **Cooldown**
+* **Si gasta HP en vez de SP (físicas)**
+
+Ejemplos:
+
+* Buffs: +ATK, +DEF, +SPD por X turnos.
+* Debuffs al boss: −ATK, −DEF, −SPD.
+* Curación: cura % del HP máximo.
+* Físicas: gastan HP en vez de SP.
+
+---
+
+# **3. Bosses**
+
+Creación:
+
+```
+*createboss <nombre> <HP> <ATK> <DEF> <SPD> <tipo>
+```
+
+### **Edición general**
+
+```
+*editboss <boss> hp/atk/def/spd <valor>
+*editboss <boss> deb/resist <tipo>
+*editboss <boss> reflect <tipo> <porcentaje>
+```
+
+### **Habilidades personalizadas (solo boss)**
+
+```
+*addskillboss <boss> "<nombre>" <tipo> <daño> <buff/debuff opcional> <cd>
+*deleteskillboss <boss> "<nombre>"
+```
+
+Ejemplo:
+
+```
+*addskillboss Yaldabaoth "Bloody Strike" eiga 160 atk_down 3
+```
+
+---
+
+# **4. Sesiones de combate**
+
+* Se pueden **activar o desactivar por servidor**:
+
+  ```
+  *enablebf
+  *disablebf
+  ```
+* Máximo de **3 a 5 sesiones simultáneas por servidor** para no saturar RAM.
+* Cada sesión guarda:
+
+  * Boss elegido
+  * Jugadores y personajes activos (máx 3)
+  * Cooldowns
+  * Buffs y debuffs activos
+  * HP / SP dinámicos
+
+### **Iniciar una bossfight**
+
+```
+*startbf <boss> <personaje1> <personaje2> <personaje3>
+```
+
+### **Cuota de entrada**
+
+El bot verifica en Unbelieva si tienes el dinero.
+Si no tienes → no entras.
+
+---
+
+# **5. Turnos, UI y tiempo**
+
+Cada turno se muestra un **embed compacto**:
+
+* Barra de HP del personaje y del boss
+* Acciones disponibles:
+
+  * **Atacar**
+  * **Habilidad**
+  * **Defender**
+  * **Huir / Rendirse**
+* Mini descripción de cada skill
+
+El usuario elige con botones.
+
+### **Tiempo límite**
+
+Si no haces una acción en **60 segundos** →
+**Derrota automática** para evitar bossfights trabadas.
+
+---
+
+# **6. Mecánicas de daño**
+
+### **1. Daño base**
+
+```
+daño = ATK atacante − DEF defensor
+```
+
+### **2. Modificadores**
+
+* **Weak** → ×1.5
+* **Resist** → ×0.5
+* **Null** → ×0
+* **Reflect** → devuelve % del daño al atacante
+* **Debuffs y buffs** → modifican stats por X turnos
+
+### **3. Habilidades físicas**
+
+Gastan HP (no SP).
+
+### **4. SP Regen**
+
+Regenera una pequeña cantidad cada 3 turnos.
+
+---
+
+# **7. Fin del combate**
+
+### Si el boss muere:
+
+* Todos ganan $$$ con Unbelieva.
+
+### Si todos los personajes mueren:
+
+* Combate perdido.
+
+# **8. Seguridad y rendimiento**
+
+* Todas las bossfights son **sesiones separadas**.
+* Se eliminan sesiones inactivas.
+* Stats máximos → hasta **1000** para dar más rango.
+* Se evita sobrecargar el bot manteniendo:
+
+  * 3 habilidades por boss
+  * Máx 3 personajes por bossfight
+  * Lógica compacta en turnos
+
+---
