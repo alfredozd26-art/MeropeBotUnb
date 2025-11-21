@@ -253,7 +253,7 @@ async function handleGirar(message) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
       .setTitle('❌ Sin Ticket')
-      .setDescription(`No tienes el ticket necesario para hacer un spin.\n\nCompra un ticket en <@292953664492929025> para poder jugar.`);
+      .setDescription(`No tienes el ticket necesario para hacer un spin.\n\nCompra un ticket en la tienda para poder jugar.`);
     return message.reply({ embeds: [embed] });
   }
 
@@ -462,7 +462,7 @@ async function handleGirar10(message) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
       .setTitle('❌ Sin Ticket x10')
-      .setDescription(`No tienes el ticket necesario para hacer 10 spins.\n\nCompra un ticket x10 en <@292953664492929025> para poder jugar.`);
+      .setDescription(`No tienes el ticket necesario para hacer 10 spins.\n\nCompra un ticket x10 en la tienda para poder jugar.`);
     return message.reply({ embeds: [embed] });
   }
 
@@ -1864,7 +1864,7 @@ async function handleFixHelp(message) {
       },
       {
         name: '⚔️ Sistema de Bossfight - Personajes',
-        value: '**`*editbf <personaje> <campo> <valor>`** (SOLO ADMIN) - Editar stats de combate\nCampos: hp, atk, def, spd, sp, type\nEjemplo: `*editbf Joker hp 600` o `*editbf Joker type curse`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad (×1.5 daño)\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia (×0.5 daño)\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** (SOLO ADMIN) - Equipar habilidad (máx 3)\n**`*mv <personaje>`** o **`*moveset <personaje>`** - Ver stats completos y moveset\n\n**Tipos válidos:** agi, bufu, zio, eiga, hama, curse, physical, almighty',
+        value: '**`*editbf <personaje> <campo> <valor>`** (SOLO ADMIN) - Editar stats de combate\nCampos: hp, atk, def, spd, sp, type\nEjemplo: `*editbf Joker hp 600` o `*editbf Joker type curse`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** (SOLO ADMIN) - Equipar habilidad (máx 3)\n**`*mv <personaje>`** o **`*moveset <personaje>`** - Ver stats completos y moveset\n\n**Tipos válidos:** agi, bufu, zio, eiga, hama, curse, physical, almighty',
         inline: false
       },
       {
@@ -2739,7 +2739,7 @@ async function handleGirarSlash(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
       .setTitle('❌ Sin Ticket')
-      .setDescription(`No tienes el ticket necesario para hacer un spin.\n\nCompra un ticket en <@292953664492929025> para poder jugar.`);
+      .setDescription(`No tienes el ticket necesario para hacer un spin.\n\nCompra un ticket en la tienda para poder jugar.`);
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
@@ -2952,7 +2952,7 @@ async function handleGirar10Slash(interaction) {
     const embed = new EmbedBuilder()
       .setColor(0xFF0000)
       .setTitle('❌ Sin Ticket x10')
-      .setDescription(`No tienes el ticket necesario para hacer 10 spins.\n\nCompra un ticket x10 en <@292953664492929025> para poder jugar.`);
+      .setDescription(`No tienes el ticket necesario para hacer 10 spins.\n\nCompra un ticket x10 en la tienda para poder jugar.`);
     return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 
@@ -3205,18 +3205,18 @@ async function handleEditBF(message, args) {
     // Editar stats normales (hp, atk, def, spd, sp, type)
     const field = charName;
     const value = rest[0];
-    
+
     if (!field || !value) {
       return message.reply('❌ Uso: `*editbf <personaje> <campo> <valor>`\nEjemplo: `*editbf Joker hp 4000`');
     }
-    
+
     // Si el campo es type, pasar string; si no, parsear número
     const finalValue = field === 'type' ? value : parseInt(value);
-    
+
     if (field !== 'type' && isNaN(finalValue)) {
       return message.reply('❌ El valor debe ser un número válido.');
     }
-    
+
     result = await bossfight.editCharacterBFStats(guildId, action, field, finalValue);
   }
 
@@ -3307,7 +3307,7 @@ async function handleEditBoss(message, args) {
     result = await bossfight.setBossReflect(guildId, bossName, value, parseInt(percentage));
   } else if (field === 'reward') {
     result = await bossfight.setBossReward(guildId, bossName, parseInt(value));
-    
+
     if (result.success) {
       const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
       const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
@@ -3315,7 +3315,7 @@ async function handleEditBoss(message, args) {
     }
   } else if (field === 'difficulty') {
     result = await bossfight.setBossDifficulty(guildId, bossName, value);
-    
+
     if (result.success) {
       const difficultyEmojis = {
         'facil': '🟢',
