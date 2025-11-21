@@ -3886,7 +3886,6 @@ async function handleMoveTypes(message) {
       { name: '⚔️ Physical', value: 'Físico', inline: true },
       { name: '♾️ Todo Poderoso', value: 'Sin debilidades', inline: true }
     )
-    .setFooter({ text: 'Usa estos tipos al crear habilidades o configurar personajes/bosses' });
 
   await message.reply({ embeds: [embed] });
 }
