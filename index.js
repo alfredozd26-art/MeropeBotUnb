@@ -3198,8 +3198,8 @@ async function handleEditBF(message, args) {
     result = await bossfight.setCharacterReflect(guildId, charName, type, parseInt(percentage));
   } else {
     // Editar stats normales (hp, atk, def, spd, sp, type)
-    const field = rest[0];
-    const value = rest[1];
+    const field = charName;
+    const value = rest[0];
     
     if (!field || !value) {
       return message.reply('❌ Uso: `*editbf <personaje> <campo> <valor>`\nEjemplo: `*editbf Joker hp 4000`');
@@ -3219,7 +3219,7 @@ async function handleEditBF(message, args) {
     return message.reply(`❌ ${result.error}`);
   }
 
-  message.reply(`✅ **${action}** actualizado correctamente.`);
+  message.reply(`✅ Actualizado correctamente.`);
 }
 
 async function handleEquip(message, args) {
@@ -3872,42 +3872,19 @@ async function handleDeleteSkill(message, args) {
 }
 
 async function handleMoveTypes(message) {
-  const typeEmojis = {
-    'agi': '🔥',
-    'bufu': '❄️',
-    'zio': '⚡',
-    'garu': '💨',
-    'mudo': '☠️',
-    'eiga': '💀',
-    'hama': '✨',
-    'kouha': '🌟',
-    'physical': '⚔️',
-    'slash': '🗡️',
-    'curse': '👿',
-    'psi': '🧠',
-    'bless': '🙏',
-    'almighty': '♾️'
-  };
-
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle('⚔️ Tabla de Tipos de Ataque')
     .setDescription('Lista completa de tipos elementales disponibles en el sistema de combate:')
     .addFields(
-      { name: '🔥 Agi (Fire)', value: 'Fuego - Ataques de llamas', inline: true },
-      { name: '❄️ Bufu (Ice)', value: 'Hielo - Ataques de frío', inline: true },
-      { name: '⚡ Zio (Electric)', value: 'Eléctrico - Ataques de rayos', inline: true },
-      { name: '💨 Garu (Wind)', value: 'Viento - Ataques de ráfagas', inline: true },
-      { name: '☠️ Mudo (Dark)', value: 'Oscuridad - Ataques de muerte', inline: true },
-      { name: '💀 Eiga (Curse)', value: 'Maldición - Daño maldito', inline: true },
-      { name: '✨ Hama (Light)', value: 'Luz - Ataques sagrados', inline: true },
-      { name: '🌟 Kouha (Bless)', value: 'Bendición - Luz divina', inline: true },
-      { name: '⚔️ Physical', value: 'Físico - Ataques cuerpo a cuerpo', inline: true },
-      { name: '🗡️ Slash', value: 'Corte - Ataques con arma', inline: true },
-      { name: '👿 Curse', value: 'Maldición - Daño oscuro', inline: true },
-      { name: '🧠 Psi (Psychic)', value: 'Psíquico - Ataques mentales', inline: true },
-      { name: '🙏 Bless', value: 'Bendición - Poder divino', inline: true },
-      { name: '♾️ Almighty', value: 'Absoluto - Sin debilidades', inline: true }
+      { name: '🔥 Agi', value: 'Fuego', inline: true },
+      { name: '❄️ Bufu', value: 'Hielo', inline: true },
+      { name: '⚡ Zio', value: 'Eléctrico', inline: true },
+      { name: '💨 Garu', value: 'Viento', inline: true },
+      { name: '💀 Eiga', value: 'Maldición', inline: true },
+      { name: '✨ Hama', value: 'Luz', inline: true },
+      { name: '⚔️ Physical', value: 'Físico', inline: true },
+      { name: '♾️ Todo Poderoso', value: 'Sin debilidades', inline: true }
     )
     .setFooter({ text: 'Usa estos tipos al crear habilidades o configurar personajes/bosses' });
 

@@ -1,23 +1,17 @@
 const storage = require('./storage');
 
 // Tipos válidos de elementos
-const VALID_TYPES = ['agi', 'bufu', 'zio', 'garu', 'mudo', 'eiga', 'hama', 'kouha', 'physical', 'slash', 'curse', 'psi', 'bless', 'almighty'];
+const VALID_TYPES = ['agi', 'bufu', 'zio', 'garu', 'eiga', 'hama', 'physical', 'todopoderoso'];
 
 const typeEmojis = {
     'agi': '🔥',
     'bufu': '❄️',
     'zio': '⚡',
     'garu': '💨',
-    'mudo': '☠️',
     'eiga': '💀',
     'hama': '✨',
-    'kouha': '🌟',
     'physical': '⚔️',
-    'slash': '🗡️',
-    'curse': '👿',
-    'psi': '🧠',
-    'bless': '🙏',
-    'almighty': '♾️'
+    'todopoderoso': '♾️'
   };
 
 
@@ -76,7 +70,9 @@ async function getCharacterFromItem(guildId, itemName) {
 
 // Editar stats de combate de un personaje del gacha
 async function editCharacterBFStats(guildId, charName, field, value) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado en el gacha' };
@@ -126,7 +122,9 @@ async function editCharacterBFStats(guildId, charName, field, value) {
 
 // Configurar debilidad
 async function setCharacterWeakness(guildId, charName, type) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
@@ -163,7 +161,9 @@ async function setCharacterWeakness(guildId, charName, type) {
 
 // Configurar resistencia
 async function setCharacterResistance(guildId, charName, type) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
@@ -200,7 +200,9 @@ async function setCharacterResistance(guildId, charName, type) {
 
 // Configurar reflect
 async function setCharacterReflect(guildId, charName, type, percentage) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
@@ -239,7 +241,9 @@ async function setCharacterReflect(guildId, charName, type, percentage) {
 
 // Equipar habilidad
 async function equipSkill(guildId, charName, skillName) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
@@ -284,7 +288,9 @@ async function equipSkill(guildId, charName, skillName) {
 
 // Obtener moveset completo de un personaje
 async function getCharacterMoveset(guildId, charName) {
-  const item = await storage.getItemByName(guildId, charName);
+  const allItems = await storage.getAllItems(guildId);
+  const { searchItemByPartialName } = require('../utils/itemSearch');
+  const item = searchItemByPartialName(allItems, charName);
 
   if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
