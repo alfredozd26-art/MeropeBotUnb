@@ -1,10 +1,27 @@
-
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const bossfight = require('./bossfight');
 
 const MAX_SESSIONS_PER_GUILD = 6;
 const COMBAT_TIMEOUT = 90000; // 90 segundos
 const activeSessions = new Map();
+
+const typeEmojis = {
+    'agi': '🔥',
+    'bufu': '❄️',
+    'zio': '⚡',
+    'garu': '💨',
+    'mudo': '☠️',
+    'eiga': '💀',
+    'hama': '✨',
+    'kouha': '🌟',
+    'physical': '⚔️',
+    'slash': '🗡️',
+    'curse': '👿',
+    'psi': '🧠',
+    'bless': '🙏',
+    'almighty': '♾️'
+  };
+
 
 function getSessionKey(guildId, userId) {
   return `${guildId}-${userId}`;
@@ -22,10 +39,10 @@ function canStartSession(guildId) {
 
 function createSession(guildId, channelId, userId, boss, characters) {
   const sessionKey = getSessionKey(guildId, userId);
-  
+
   const bossClone = JSON.parse(JSON.stringify(boss));
   bossClone.currentHp = boss.hp;
-  
+
   const charsClone = characters.map(c => {
     const clone = JSON.parse(JSON.stringify(c));
     clone.currentHp = c.hp;
@@ -35,7 +52,7 @@ function createSession(guildId, channelId, userId, boss, characters) {
     clone.cooldowns = {};
     return clone;
   });
-  
+
   const session = {
     guildId,
     channelId,
@@ -49,7 +66,7 @@ function createSession(guildId, channelId, userId, boss, characters) {
     lastActionTime: Date.now(),
     messageId: null
   };
-  
+
   activeSessions.set(sessionKey, session);
   return session;
 }
@@ -65,11 +82,11 @@ function deleteSession(guildId, userId) {
 function createCombatEmbed(session) {
   const currentChar = session.characters[session.currentCharIndex];
   const boss = session.boss;
-  
+
   const bossHpPercent = Math.floor((boss.currentHp / boss.maxHp) * 100);
   const charHpPercent = Math.floor((currentChar.currentHp / currentChar.maxHp) * 100);
   const charSpPercent = Math.floor((currentChar.currentSp / currentChar.maxSp) * 100);
-  
+
   const embed = new EmbedBuilder()
     .setColor(0xFF0000)
     .setTitle(`⚔️ Boss Fight - Turno ${session.turn + 1}`)
@@ -87,7 +104,7 @@ function createCombatEmbed(session) {
       }
     )
     .setFooter({ text: 'Tienes 90 segundos para actuar' });
-  
+
   const buffsText = [];
   if (Object.keys(currentChar.buffs).length > 0) {
     buffsText.push('**Buffs:** ' + Object.entries(currentChar.buffs).map(([k, v]) => `${k} (${v}t)`).join(', '));
@@ -98,13 +115,13 @@ function createCombatEmbed(session) {
   if (buffsText.length > 0) {
     embed.addFields({ name: '🔮 Estados', value: buffsText.join('\n'), inline: false });
   }
-  
+
   return embed;
 }
 
 function createActionButtons(session) {
   const currentChar = session.characters[session.currentCharIndex];
-  
+
   const row = new ActionRowBuilder()
     .addComponents(
       new ButtonBuilder()
@@ -125,27 +142,27 @@ function createActionButtons(session) {
         .setLabel('🏳️ Rendirse')
         .setStyle(ButtonStyle.Danger)
     );
-  
+
   return [row];
 }
 
 function performBossAction(session) {
   const boss = session.boss;
   const currentChar = session.characters[session.currentCharIndex];
-  
+
   let selectedSkill = null;
-  
+
   if (boss.skills && boss.skills.length > 0) {
     const availableSkills = boss.skills.filter(s => !s.currentCooldown || s.currentCooldown <= 0);
-    
+
     if (availableSkills.length > 0) {
       selectedSkill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
     }
   }
-  
+
   let damage = 0;
   let action = '';
-  
+
   if (selectedSkill) {
     const stats = applyBuffs(boss, session.bossBuffs, session.bossDebuffs);
     const dmgResult = bossfight.calculateDamage(
@@ -159,11 +176,11 @@ function performBossAction(session) {
         reflects: currentChar.reflects
       }
     );
-    
+
     damage = dmgResult.damage;
     currentChar.currentHp -= damage;
     if (currentChar.currentHp < 0) currentChar.currentHp = 0;
-    
+
     if (selectedSkill.effect) {
       const [effectType, effectTarget] = selectedSkill.effect.split('_');
       if (effectTarget === 'up') {
@@ -172,11 +189,11 @@ function performBossAction(session) {
         currentChar.debuffs[selectedSkill.effect] = 3;
       }
     }
-    
+
     if (selectedSkill.cooldown > 0) {
       selectedSkill.currentCooldown = selectedSkill.cooldown;
     }
-    
+
     action = `usó **${selectedSkill.name}**`;
   } else {
     const stats = applyBuffs(boss, session.bossBuffs, session.bossDebuffs);
@@ -189,14 +206,14 @@ function performBossAction(session) {
         reflects: currentChar.reflects
       }
     );
-    
+
     damage = dmgResult.damage;
     currentChar.currentHp -= damage;
     if (currentChar.currentHp < 0) currentChar.currentHp = 0;
-    
+
     action = 'atacó';
   }
-  
+
   if (boss.skills) {
     for (const skill of boss.skills) {
       if (skill.currentCooldown && skill.currentCooldown > 0) {
@@ -204,7 +221,7 @@ function performBossAction(session) {
       }
     }
   }
-  
+
   return { action, damage };
 }
 
@@ -215,18 +232,18 @@ function applyBuffs(character, buffs = null, debuffs = null) {
     spd: character.spd,
     type: character.type
   };
-  
+
   const effectiveBuffs = buffs || character.buffs || {};
   const effectiveDebuffs = debuffs || character.debuffs || {};
-  
+
   if (effectiveBuffs.atk_up) stats.atk = Math.floor(stats.atk * 1.3);
   if (effectiveBuffs.def_up) stats.def = Math.floor(stats.def * 1.3);
   if (effectiveBuffs.spd_up) stats.spd = Math.floor(stats.spd * 1.3);
-  
+
   if (effectiveDebuffs.atk_down) stats.atk = Math.floor(stats.atk * 0.7);
   if (effectiveDebuffs.def_down) stats.def = Math.floor(stats.def * 0.7);
   if (effectiveDebuffs.spd_down) stats.spd = Math.floor(stats.spd * 0.7);
-  
+
   return stats;
 }
 
@@ -237,7 +254,7 @@ function decrementBuffsDebuffs(entity) {
       delete entity.buffs[buff];
     }
   }
-  
+
   for (const debuff in entity.debuffs) {
     entity.debuffs[debuff]--;
     if (entity.debuffs[debuff] <= 0) {

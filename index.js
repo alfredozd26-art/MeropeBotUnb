@@ -210,7 +210,7 @@ client.on('messageCreate', async (message) => {
     } else if (command === 'deleteskill') {
       await handleDeleteSkill(message, args);
     } else if (command === 'mv' || command === 'moveset') {
-      await handleMoveset(message, args);
+      await handleMoveTypes(message);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -3171,35 +3171,55 @@ async function handleEditBF(message, args) {
   const guildId = message.guild?.id;
   if (!guildId) return;
 
-  if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-    return message.reply('❌ Necesitas permisos de administrador.');
+  if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return message.reply('❌ Solo administradores pueden usar este comando.');
   }
 
   if (args.length < 3) {
-    return message.reply('❌ Uso:\n`*editbf deb <personaje> <tipo>`\n`*editbf resist <personaje> <tipo>`\n`*editbf reflect <personaje> <tipo> <porcentaje>`');
+    return message.reply('❌ Uso:\n`*editbf <personaje> <campo> <valor>`\nCampos: hp, atk, def, spd, sp, type\n`*editbf deb <personaje> <tipo>`\n`*editbf resist <personaje> <tipo>`\n`*editbf reflect <personaje> <tipo> <porcentaje>`\n\nEjemplo: `*editbf Joker hp 4000`');
   }
 
-  const [action, charName, type, percentage] = args;
+  const [action, charName, ...rest] = args;
   let result;
 
+  // Comandos especiales (deb, resist, reflect)
   if (action === 'deb') {
-    result = await bossfight.setCharacterWeakness(guildId, message.author.id, charName, type);
+    const type = rest[0];
+    result = await bossfight.setCharacterWeakness(guildId, charName, type);
   } else if (action === 'resist') {
-    result = await bossfight.setCharacterResistance(guildId, message.author.id, charName, type);
+    const type = rest[0];
+    result = await bossfight.setCharacterResistance(guildId, charName, type);
   } else if (action === 'reflect') {
+    const type = rest[0];
+    const percentage = rest[1];
     if (!percentage) {
       return message.reply('❌ Debes especificar el porcentaje de reflect.');
     }
-    result = await bossfight.setCharacterReflect(guildId, message.author.id, charName, type, parseInt(percentage));
+    result = await bossfight.setCharacterReflect(guildId, charName, type, parseInt(percentage));
   } else {
-    return message.reply('❌ Acción no válida. Usa: deb, resist, o reflect');
+    // Editar stats normales (hp, atk, def, spd, sp, type)
+    const field = rest[0];
+    const value = rest[1];
+    
+    if (!field || !value) {
+      return message.reply('❌ Uso: `*editbf <personaje> <campo> <valor>`\nEjemplo: `*editbf Joker hp 4000`');
+    }
+    
+    // Si el campo es type, pasar string; si no, parsear número
+    const finalValue = field === 'type' ? value : parseInt(value);
+    
+    if (field !== 'type' && isNaN(finalValue)) {
+      return message.reply('❌ El valor debe ser un número válido.');
+    }
+    
+    result = await bossfight.editCharacterBFStats(guildId, action, field, finalValue);
   }
 
   if (!result.success) {
     return message.reply(`❌ ${result.error}`);
   }
 
-  message.reply(`✅ ${charName} actualizado correctamente.`);
+  message.reply(`✅ **${action}** actualizado correctamente.`);
 }
 
 async function handleEquip(message, args) {
@@ -3851,99 +3871,45 @@ async function handleDeleteSkill(message, args) {
   message.reply(`✅ Habilidad **${skillName}** eliminada correctamente.`);
 }
 
-async function handleMoveset(message, args) {
-  if (args.length < 1) {
-    return message.reply('❌ Uso: `*mv <personaje>`\n\nEjemplo: `*mv Joker`\n\nMuestra todos los stats de combate, tipo/elemento, debilidades, resistencias y habilidades del personaje.');
-  }
-
-  const guildId = message.guild?.id;
-  if (!guildId) return;
-
-  const charName = args.join(' ');
-  const result = await bossfight.getCharacterMoveset(guildId, charName);
-
-  if (!result.success) {
-    return message.reply(`❌ ${result.error}`);
-  }
-
-  const char = result.character;
-  
+async function handleMoveTypes(message) {
   const typeEmojis = {
     'agi': '🔥',
     'bufu': '❄️',
     'zio': '⚡',
+    'garu': '💨',
+    'mudo': '☠️',
     'eiga': '💀',
     'hama': '✨',
-    'curse': '👿',
+    'kouha': '🌟',
     'physical': '⚔️',
-    'almighty': '🌟'
+    'slash': '🗡️',
+    'curse': '👿',
+    'psi': '🧠',
+    'bless': '🙏',
+    'almighty': '♾️'
   };
-  
-  const typeEmoji = typeEmojis[char.type] || '⚔️';
-  
+
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
-    .setTitle(`⚔️ Moveset de ${char.name}`)
+    .setTitle('⚔️ Tabla de Tipos de Ataque')
+    .setDescription('Lista completa de tipos elementales disponibles en el sistema de combate:')
     .addFields(
-      { name: 'Elemento/Tipo', value: `${typeEmoji} ${char.type.toUpperCase()}`, inline: true },
-      { name: 'HP', value: `${char.hp}`, inline: true },
-      { name: 'SP', value: `${char.sp}`, inline: true },
-      { name: 'ATK', value: `${char.atk}`, inline: true },
-      { name: 'DEF', value: `${char.def}`, inline: true },
-      { name: 'SPD', value: `${char.spd}`, inline: true }
-    );
-
-  if (char.weaknesses && char.weaknesses.length > 0) {
-    embed.addFields({
-      name: '❌ Debilidades (×1.5 daño)',
-      value: char.weaknesses.map(w => `${typeEmojis[w] || '•'} ${w.toUpperCase()}`).join(', '),
-      inline: false
-    });
-  }
-
-  if (char.resistances && char.resistances.length > 0) {
-    embed.addFields({
-      name: '🛡️ Resistencias (×0.5 daño)',
-      value: char.resistances.map(r => `${typeEmojis[r] || '•'} ${r.toUpperCase()}`).join(', '),
-      inline: false
-    });
-  }
-
-  if (char.reflects && Object.keys(char.reflects).length > 0) {
-    const reflectText = Object.entries(char.reflects)
-      .map(([type, perc]) => `${typeEmojis[type] || '•'} ${type.toUpperCase()} (${perc}%)`)
-      .join(', ');
-    embed.addFields({
-      name: '↩️ Reflect (devuelve % del daño)',
-      value: reflectText,
-      inline: false
-    });
-  }
-
-  if (char.skills && char.skills.length > 0) {
-    let skillsText = '';
-    for (const skill of char.skills) {
-      const costType = skill.usesHp ? 'HP' : 'SP';
-      skillsText += `**${skill.name}** - ${typeEmojis[skill.type] || '•'} ${skill.type.toUpperCase()}\n`;
-      skillsText += `Costo: ${skill.spCost} ${costType} | Daño: ${skill.damage}`;
-      if (skill.effect) skillsText += ` | Efecto: ${skill.effect}`;
-      if (skill.cooldown > 0) skillsText += ` | CD: ${skill.cooldown}t`;
-      skillsText += '\n\n';
-    }
-    embed.addFields({
-      name: '🔮 Habilidades Equipadas',
-      value: skillsText || 'Ninguna',
-      inline: false
-    });
-  } else {
-    embed.addFields({
-      name: '🔮 Habilidades Equipadas',
-      value: 'Ninguna (usa `*equip` para equipar habilidades)',
-      inline: false
-    });
-  }
-
-  embed.setFooter({ text: `Tipos disponibles: ${bossfight.VALID_TYPES.join(', ')}` });
+      { name: '🔥 Agi (Fire)', value: 'Fuego - Ataques de llamas', inline: true },
+      { name: '❄️ Bufu (Ice)', value: 'Hielo - Ataques de frío', inline: true },
+      { name: '⚡ Zio (Electric)', value: 'Eléctrico - Ataques de rayos', inline: true },
+      { name: '💨 Garu (Wind)', value: 'Viento - Ataques de ráfagas', inline: true },
+      { name: '☠️ Mudo (Dark)', value: 'Oscuridad - Ataques de muerte', inline: true },
+      { name: '💀 Eiga (Curse)', value: 'Maldición - Daño maldito', inline: true },
+      { name: '✨ Hama (Light)', value: 'Luz - Ataques sagrados', inline: true },
+      { name: '🌟 Kouha (Bless)', value: 'Bendición - Luz divina', inline: true },
+      { name: '⚔️ Physical', value: 'Físico - Ataques cuerpo a cuerpo', inline: true },
+      { name: '🗡️ Slash', value: 'Corte - Ataques con arma', inline: true },
+      { name: '👿 Curse', value: 'Maldición - Daño oscuro', inline: true },
+      { name: '🧠 Psi (Psychic)', value: 'Psíquico - Ataques mentales', inline: true },
+      { name: '🙏 Bless', value: 'Bendición - Poder divino', inline: true },
+      { name: '♾️ Almighty', value: 'Absoluto - Sin debilidades', inline: true }
+    )
+    .setFooter({ text: 'Usa estos tipos al crear habilidades o configurar personajes/bosses' });
 
   await message.reply({ embeds: [embed] });
 }
