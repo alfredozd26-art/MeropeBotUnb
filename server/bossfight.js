@@ -446,7 +446,9 @@ async function createBoss(guildId, name, hp, atk, def, spd, type) {
     skills: [],
     weaknesses: [],
     resistances: [],
-    reflects: {}
+    reflects: {},
+    reward: 1000,
+    difficulty: 'normal'
   };
 
   const filePath = storage.getFilePath(guildId, 'bosses');
@@ -612,6 +614,51 @@ async function deleteBossSkill(guildId, bossName, skillName) {
   return { success: true };
 }
 
+// Configurar recompensa del boss
+async function setBossReward(guildId, bossName, reward) {
+  const bosses = await getAllBosses(guildId);
+  const boss = bosses.find(b => b.name.toLowerCase() === bossName.toLowerCase());
+
+  if (!boss) {
+    return { success: false, error: 'Boss no encontrado' };
+  }
+
+  if (reward < 0) {
+    return { success: false, error: 'La recompensa debe ser un número positivo' };
+  }
+
+  boss.reward = reward;
+
+  const filePath = storage.getFilePath(guildId, 'bosses');
+  await storage.writeJSON(filePath, { bosses });
+
+  return { success: true };
+}
+
+// Configurar dificultad del boss
+async function setBossDifficulty(guildId, bossName, difficulty) {
+  const bosses = await getAllBosses(guildId);
+  const boss = bosses.find(b => b.name.toLowerCase() === bossName.toLowerCase());
+
+  if (!boss) {
+    return { success: false, error: 'Boss no encontrado' };
+  }
+
+  const validDifficulties = ['facil', 'normal', 'dificil', 'extremo'];
+  const difficultyValue = difficulty.toLowerCase();
+
+  if (!validDifficulties.includes(difficultyValue)) {
+    return { success: false, error: `Dificultad inválida. Usa: facil, normal, dificil, extremo` };
+  }
+
+  boss.difficulty = difficultyValue;
+
+  const filePath = storage.getFilePath(guildId, 'bosses');
+  await storage.writeJSON(filePath, { bosses });
+
+  return { success: true };
+}
+
 // Calcular daño
 function calculateDamage(attacker, defender, options = {}) {
   const { skillType, skillDamage, weaknesses = [], resistances = [], reflects = {} } = options;
@@ -664,5 +711,7 @@ module.exports = {
   setBossReflect,
   addBossSkill,
   deleteBossSkill,
+  setBossReward,
+  setBossDifficulty,
   calculateDamage
 };

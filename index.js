@@ -3290,7 +3290,7 @@ async function handleEditBoss(message, args) {
   }
 
   if (args.length < 3) {
-    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
+    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd, reward, difficulty\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
   }
 
   const [bossName, field, value, percentage] = args;
@@ -3305,6 +3305,27 @@ async function handleEditBoss(message, args) {
       return message.reply('❌ Debes especificar el porcentaje de reflect.');
     }
     result = await bossfight.setBossReflect(guildId, bossName, value, parseInt(percentage));
+  } else if (field === 'reward') {
+    result = await bossfight.setBossReward(guildId, bossName, parseInt(value));
+    
+    if (result.success) {
+      const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+      const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
+      return message.reply(`✅ Recompensa del boss ${bossName} actualizada a **${parseInt(value).toLocaleString('en-US')}${currencySymbol}**`);
+    }
+  } else if (field === 'difficulty') {
+    result = await bossfight.setBossDifficulty(guildId, bossName, value);
+    
+    if (result.success) {
+      const difficultyEmojis = {
+        'facil': '🟢',
+        'normal': '🟡',
+        'dificil': '🟠',
+        'extremo': '🔴'
+      };
+      const emoji = difficultyEmojis[value.toLowerCase()] || '';
+      return message.reply(`✅ Dificultad del boss ${bossName} actualizada a **${emoji} ${value.charAt(0).toUpperCase() + value.slice(1)}**`);
+    }
   } else {
     result = await bossfight.editBoss(guildId, bossName, field.toLowerCase(), parseInt(value));
   }
@@ -3723,12 +3744,25 @@ async function handleListBosses(message) {
     return message.reply('❌ No hay bosses configurados.');
   }
 
+  const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+  const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
+
+  const difficultyEmojis = {
+    'facil': '🟢',
+    'normal': '🟡',
+    'dificil': '🟠',
+    'extremo': '🔴'
+  };
+
   const embed = new EmbedBuilder()
     .setColor(0xFF0000)
     .setTitle('👹 Bosses Disponibles')
-    .setDescription(bosses.map(b => 
-      `**${b.name}** - HP: ${b.hp} | ATK: ${b.atk} | DEF: ${b.def} | SPD: ${b.spd} | Tipo: ${b.type.toUpperCase()}`
-    ).join('\n'));
+    .setDescription(bosses.map(b => {
+      const difficulty = b.difficulty || 'normal';
+      const diffEmoji = difficultyEmojis[difficulty] || '🟡';
+      const reward = (b.reward || 1000).toLocaleString('en-US');
+      return `**${b.name}** ${diffEmoji}\nHP: ${b.hp} | ATK: ${b.atk} | DEF: ${b.def} | SPD: ${b.spd}\nTipo: ${b.type.toUpperCase()} | Recompensa: ${currencySymbol}${reward}`;
+    }).join('\n\n'));
 
   message.reply({ embeds: [embed] });
 }
