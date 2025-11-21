@@ -1,6 +1,9 @@
 
 const storage = require('./storage');
 
+// Tipos válidos de elementos
+const VALID_TYPES = ['agi', 'bufu', 'zio', 'eiga', 'hama', 'curse', 'physical', 'almighty'];
+
 // Obtener personaje del gacha con stats de combate
 async function getCharacterFromItem(guildId, itemName) {
   const item = await storage.getItemByName(guildId, itemName);
@@ -14,22 +17,43 @@ async function getCharacterFromItem(guildId, itemName) {
       name: item.name,
       hp: 500,
       maxHp: 500,
+      currentHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
       maxSp: 100,
+      currentSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
-      reflects: {}
+      reflects: {},
+      buffs: {},
+      debuffs: {},
+      cooldowns: {}
     };
   }
   
   return {
     name: item.name,
-    ...item.bfStats
+    hp: item.bfStats.hp || 500,
+    maxHp: item.bfStats.hp || 500,
+    currentHp: item.bfStats.hp || 500,
+    atk: item.bfStats.atk || 100,
+    def: item.bfStats.def || 80,
+    spd: item.bfStats.spd || 100,
+    type: item.bfStats.type || 'physical',
+    sp: item.bfStats.sp || 100,
+    maxSp: item.bfStats.sp || 100,
+    currentSp: item.bfStats.sp || 100,
+    skills: item.bfStats.skills || [],
+    weaknesses: item.bfStats.weaknesses || [],
+    resistances: item.bfStats.resistances || [],
+    reflects: item.bfStats.reflects || {},
+    buffs: {},
+    debuffs: {},
+    cooldowns: {}
   };
 }
 
@@ -43,23 +67,26 @@ async function editCharacterBFStats(guildId, charName, field, value) {
   
   const validFields = ['hp', 'atk', 'def', 'spd', 'sp', 'type'];
   if (!validFields.includes(field)) {
-    return { success: false, error: 'Campo inválido' };
+    return { success: false, error: 'Campo inválido. Use: hp, atk, def, spd, sp, type' };
   }
   
-  if (field !== 'type' && (value > 1000 || value < 1)) {
+  if (field === 'type') {
+    const typeValue = value.toLowerCase();
+    if (!VALID_TYPES.includes(typeValue)) {
+      return { success: false, error: `Tipo inválido. Tipos válidos: ${VALID_TYPES.join(', ')}` };
+    }
+  } else if (value > 1000 || value < 1) {
     return { success: false, error: 'El valor debe estar entre 1 y 1000' };
   }
   
   if (!item.bfStats) {
     item.bfStats = {
       hp: 500,
-      maxHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
-      maxSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
@@ -69,10 +96,8 @@ async function editCharacterBFStats(guildId, charName, field, value) {
   
   if (field === 'hp') {
     item.bfStats.hp = value;
-    item.bfStats.maxHp = value;
   } else if (field === 'sp') {
     item.bfStats.sp = value;
-    item.bfStats.maxSp = value;
   } else {
     item.bfStats[field] = field === 'type' ? value.toLowerCase() : value;
   }
@@ -90,16 +115,19 @@ async function setCharacterWeakness(guildId, charName, type) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
+  const typeValue = type.toLowerCase();
+  if (!VALID_TYPES.includes(typeValue)) {
+    return { success: false, error: `Tipo inválido. Tipos válidos: ${VALID_TYPES.join(', ')}` };
+  }
+  
   if (!item.bfStats) {
     item.bfStats = {
       hp: 500,
-      maxHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
-      maxSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
@@ -107,8 +135,8 @@ async function setCharacterWeakness(guildId, charName, type) {
     };
   }
   
-  if (!item.bfStats.weaknesses.includes(type.toLowerCase())) {
-    item.bfStats.weaknesses.push(type.toLowerCase());
+  if (!item.bfStats.weaknesses.includes(typeValue)) {
+    item.bfStats.weaknesses.push(typeValue);
   }
   
   await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
@@ -124,16 +152,19 @@ async function setCharacterResistance(guildId, charName, type) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
+  const typeValue = type.toLowerCase();
+  if (!VALID_TYPES.includes(typeValue)) {
+    return { success: false, error: `Tipo inválido. Tipos válidos: ${VALID_TYPES.join(', ')}` };
+  }
+  
   if (!item.bfStats) {
     item.bfStats = {
       hp: 500,
-      maxHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
-      maxSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
@@ -141,8 +172,8 @@ async function setCharacterResistance(guildId, charName, type) {
     };
   }
   
-  if (!item.bfStats.resistances.includes(type.toLowerCase())) {
-    item.bfStats.resistances.push(type.toLowerCase());
+  if (!item.bfStats.resistances.includes(typeValue)) {
+    item.bfStats.resistances.push(typeValue);
   }
   
   await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
@@ -158,6 +189,11 @@ async function setCharacterReflect(guildId, charName, type, percentage) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
+  const typeValue = type.toLowerCase();
+  if (!VALID_TYPES.includes(typeValue)) {
+    return { success: false, error: `Tipo inválido. Tipos válidos: ${VALID_TYPES.join(', ')}` };
+  }
+  
   if (percentage < 0 || percentage > 100) {
     return { success: false, error: 'El porcentaje debe estar entre 0 y 100' };
   }
@@ -165,13 +201,11 @@ async function setCharacterReflect(guildId, charName, type, percentage) {
   if (!item.bfStats) {
     item.bfStats = {
       hp: 500,
-      maxHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
-      maxSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
@@ -179,7 +213,7 @@ async function setCharacterReflect(guildId, charName, type, percentage) {
     };
   }
   
-  item.bfStats.reflects[type.toLowerCase()] = percentage;
+  item.bfStats.reflects[typeValue] = percentage;
   
   await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
@@ -204,13 +238,11 @@ async function equipSkill(guildId, charName, skillName) {
   if (!item.bfStats) {
     item.bfStats = {
       hp: 500,
-      maxHp: 500,
       atk: 100,
       def: 80,
       spd: 100,
       type: 'physical',
       sp: 100,
-      maxSp: 100,
       skills: [],
       weaknesses: [],
       resistances: [],
@@ -222,13 +254,64 @@ async function equipSkill(guildId, charName, skillName) {
     return { success: false, error: 'Máximo 3 habilidades por personaje' };
   }
   
-  if (!item.bfStats.skills.includes(skill.name)) {
-    item.bfStats.skills.push(skill.name);
+  if (item.bfStats.skills.includes(skill.name)) {
+    return { success: false, error: 'Esta habilidad ya está equipada' };
   }
+  
+  item.bfStats.skills.push(skill.name);
   
   await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
+}
+
+// Obtener moveset completo de un personaje
+async function getCharacterMoveset(guildId, charName) {
+  const item = await storage.getItemByName(guildId, charName);
+  
+  if (!item) {
+    return { success: false, error: 'Personaje no encontrado' };
+  }
+  
+  const objectType = (item.objectType || 'personaje').toLowerCase();
+  if (objectType !== 'personaje') {
+    return { success: false, error: 'Este item no es un personaje' };
+  }
+  
+  const bfStats = item.bfStats || {
+    hp: 500,
+    atk: 100,
+    def: 80,
+    spd: 100,
+    type: 'physical',
+    sp: 100,
+    skills: [],
+    weaknesses: [],
+    resistances: [],
+    reflects: {}
+  };
+  
+  const skills = await getAllCommonSkills(guildId);
+  const equippedSkills = bfStats.skills.map(skillName => 
+    skills.find(s => s.name === skillName)
+  ).filter(s => s);
+  
+  return {
+    success: true,
+    character: {
+      name: item.name,
+      type: bfStats.type || 'physical',
+      hp: bfStats.hp || 500,
+      atk: bfStats.atk || 100,
+      def: bfStats.def || 80,
+      spd: bfStats.spd || 100,
+      sp: bfStats.sp || 100,
+      weaknesses: bfStats.weaknesses || [],
+      resistances: bfStats.resistances || [],
+      reflects: bfStats.reflects || {},
+      skills: equippedSkills
+    }
+  };
 }
 
 // Obtener personajes del usuario (solo los que tiene rol)
@@ -538,12 +621,14 @@ function calculateDamage(attacker, defender, options = {}) {
 }
 
 module.exports = {
+  VALID_TYPES,
   getCharacterFromItem,
   editCharacterBFStats,
   setCharacterWeakness,
   setCharacterResistance,
   setCharacterReflect,
   equipSkill,
+  getCharacterMoveset,
   getUserCharacters,
   getAllCommonSkills,
   createCommonSkill,

@@ -209,6 +209,8 @@ client.on('messageCreate', async (message) => {
       await handleListSkills(message);
     } else if (command === 'deleteskill') {
       await handleDeleteSkill(message, args);
+    } else if (command === 'mv' || command === 'moveset') {
+      await handleMoveset(message, args);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -1857,7 +1859,7 @@ async function handleFixHelp(message) {
       },
       {
         name: '⚔️ Sistema de Bossfight - Personajes',
-        value: '**`*createchar <nombre> <HP> <ATK> <DEF> <SPD> <tipo>`** - Crear personaje\nEjemplo: `*createchar Joker 500 120 80 100 curse`\n\n**`*editchar <personaje> <campo> <valor>`** - Editar stats\nCampos: hp, atk, def, spd, sp\nEjemplo: `*editchar Joker hp 600`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** - Equipar habilidad\n**`*listchars`** - Ver tus personajes',
+        value: '**`*editbf <personaje> <campo> <valor>`** (SOLO ADMIN) - Editar stats de combate\nCampos: hp, atk, def, spd, sp, type\nEjemplo: `*editbf Joker hp 600` o `*editbf Joker type curse`\n\n**`*editbf deb <personaje> <tipo>`** - Configurar debilidad (×1.5 daño)\n**`*editbf resist <personaje> <tipo>`** - Configurar resistencia (×0.5 daño)\n**`*editbf reflect <personaje> <tipo> <porcentaje>`** - Configurar reflect\n\n**`*equip <personaje> <habilidad>`** (SOLO ADMIN) - Equipar habilidad (máx 3)\n**`*mv <personaje>`** o **`*moveset <personaje>`** - Ver stats completos y moveset\n\n**Tipos válidos:** agi, bufu, zio, eiga, hama, curse, physical, almighty',
         inline: false
       },
       {
@@ -3847,6 +3849,103 @@ async function handleDeleteSkill(message, args) {
   }
 
   message.reply(`✅ Habilidad **${skillName}** eliminada correctamente.`);
+}
+
+async function handleMoveset(message, args) {
+  if (args.length < 1) {
+    return message.reply('❌ Uso: `*mv <personaje>`\n\nEjemplo: `*mv Joker`\n\nMuestra todos los stats de combate, tipo/elemento, debilidades, resistencias y habilidades del personaje.');
+  }
+
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const charName = args.join(' ');
+  const result = await bossfight.getCharacterMoveset(guildId, charName);
+
+  if (!result.success) {
+    return message.reply(`❌ ${result.error}`);
+  }
+
+  const char = result.character;
+  
+  const typeEmojis = {
+    'agi': '🔥',
+    'bufu': '❄️',
+    'zio': '⚡',
+    'eiga': '💀',
+    'hama': '✨',
+    'curse': '👿',
+    'physical': '⚔️',
+    'almighty': '🌟'
+  };
+  
+  const typeEmoji = typeEmojis[char.type] || '⚔️';
+  
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle(`⚔️ Moveset de ${char.name}`)
+    .addFields(
+      { name: 'Elemento/Tipo', value: `${typeEmoji} ${char.type.toUpperCase()}`, inline: true },
+      { name: 'HP', value: `${char.hp}`, inline: true },
+      { name: 'SP', value: `${char.sp}`, inline: true },
+      { name: 'ATK', value: `${char.atk}`, inline: true },
+      { name: 'DEF', value: `${char.def}`, inline: true },
+      { name: 'SPD', value: `${char.spd}`, inline: true }
+    );
+
+  if (char.weaknesses && char.weaknesses.length > 0) {
+    embed.addFields({
+      name: '❌ Debilidades (×1.5 daño)',
+      value: char.weaknesses.map(w => `${typeEmojis[w] || '•'} ${w.toUpperCase()}`).join(', '),
+      inline: false
+    });
+  }
+
+  if (char.resistances && char.resistances.length > 0) {
+    embed.addFields({
+      name: '🛡️ Resistencias (×0.5 daño)',
+      value: char.resistances.map(r => `${typeEmojis[r] || '•'} ${r.toUpperCase()}`).join(', '),
+      inline: false
+    });
+  }
+
+  if (char.reflects && Object.keys(char.reflects).length > 0) {
+    const reflectText = Object.entries(char.reflects)
+      .map(([type, perc]) => `${typeEmojis[type] || '•'} ${type.toUpperCase()} (${perc}%)`)
+      .join(', ');
+    embed.addFields({
+      name: '↩️ Reflect (devuelve % del daño)',
+      value: reflectText,
+      inline: false
+    });
+  }
+
+  if (char.skills && char.skills.length > 0) {
+    let skillsText = '';
+    for (const skill of char.skills) {
+      const costType = skill.usesHp ? 'HP' : 'SP';
+      skillsText += `**${skill.name}** - ${typeEmojis[skill.type] || '•'} ${skill.type.toUpperCase()}\n`;
+      skillsText += `Costo: ${skill.spCost} ${costType} | Daño: ${skill.damage}`;
+      if (skill.effect) skillsText += ` | Efecto: ${skill.effect}`;
+      if (skill.cooldown > 0) skillsText += ` | CD: ${skill.cooldown}t`;
+      skillsText += '\n\n';
+    }
+    embed.addFields({
+      name: '🔮 Habilidades Equipadas',
+      value: skillsText || 'Ninguna',
+      inline: false
+    });
+  } else {
+    embed.addFields({
+      name: '🔮 Habilidades Equipadas',
+      value: 'Ninguna (usa `*equip` para equipar habilidades)',
+      inline: false
+    });
+  }
+
+  embed.setFooter({ text: `Tipos disponibles: ${bossfight.VALID_TYPES.join(', ')}` });
+
+  await message.reply({ embeds: [embed] });
 }
 
 const token = process.env.DISCORD_TOKEN;
