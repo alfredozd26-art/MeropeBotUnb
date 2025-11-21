@@ -1,148 +1,160 @@
 
 const storage = require('./storage');
 
-// Crear personaje
-async function createCharacter(guildId, userId, name, hp, atk, def, spd, type) {
-  if (hp > 1000 || atk > 1000 || def > 1000 || spd > 1000) {
-    return { success: false, error: 'Los stats no pueden exceder 1000' };
+// Obtener personaje del gacha con stats de combate
+async function getCharacterFromItem(guildId, itemName) {
+  const item = await storage.getItemByName(guildId, itemName);
+  if (!item) {
+    return null;
   }
   
-  if (hp < 1 || atk < 1 || def < 1 || spd < 1) {
-    return { success: false, error: 'Los stats deben ser mayores a 0' };
+  // Si no tiene stats de combate, inicializarlos con valores por defecto
+  if (!item.bfStats) {
+    return {
+      name: item.name,
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
   }
   
-  const characters = await getAllCharacters(guildId, userId);
-  if (characters.find(c => c.name.toLowerCase() === name.toLowerCase())) {
-    return { success: false, error: 'Ya tienes un personaje con ese nombre' };
-  }
-  
-  const character = {
-    name,
-    hp,
-    maxHp: hp,
-    currentHp: hp,
-    atk,
-    def,
-    spd,
-    type: type.toLowerCase(),
-    sp: 100,
-    maxSp: 100,
-    currentSp: 100,
-    skills: [],
-    weaknesses: [],
-    resistances: [],
-    reflects: {},
-    buffs: {},
-    debuffs: {},
-    cooldowns: {}
+  return {
+    name: item.name,
+    ...item.bfStats
   };
-  
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  
-  if (!data[userId]) {
-    data[userId] = [];
-  }
-  
-  data[userId].push(character);
-  await storage.writeJSON(filePath, data);
-  
-  return { success: true, character };
 }
 
-// Obtener todos los personajes de un usuario
-async function getAllCharacters(guildId, userId) {
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  return data[userId] || [];
-}
-
-// Editar personaje
-async function editCharacter(guildId, userId, charName, field, value) {
-  const characters = await getAllCharacters(guildId, userId);
-  const char = characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
+// Editar stats de combate de un personaje del gacha
+async function editCharacterBFStats(guildId, charName, field, value) {
+  const item = await storage.getItemByName(guildId, charName);
   
-  if (!char) {
-    return { success: false, error: 'Personaje no encontrado' };
+  if (!item) {
+    return { success: false, error: 'Personaje no encontrado en el gacha' };
   }
   
-  const validFields = ['hp', 'atk', 'def', 'spd', 'sp'];
+  const validFields = ['hp', 'atk', 'def', 'spd', 'sp', 'type'];
   if (!validFields.includes(field)) {
     return { success: false, error: 'Campo inválido' };
   }
   
-  if (value > 1000 || value < 1) {
+  if (field !== 'type' && (value > 1000 || value < 1)) {
     return { success: false, error: 'El valor debe estar entre 1 y 1000' };
   }
   
-  if (field === 'hp') {
-    char.hp = value;
-    char.maxHp = value;
-    char.currentHp = value;
-  } else if (field === 'sp') {
-    char.sp = value;
-    char.maxSp = value;
-    char.currentSp = value;
-  } else {
-    char[field] = value;
+  if (!item.bfStats) {
+    item.bfStats = {
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
   }
   
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  data[userId] = characters;
-  await storage.writeJSON(filePath, data);
+  if (field === 'hp') {
+    item.bfStats.hp = value;
+    item.bfStats.maxHp = value;
+  } else if (field === 'sp') {
+    item.bfStats.sp = value;
+    item.bfStats.maxSp = value;
+  } else {
+    item.bfStats[field] = field === 'type' ? value.toLowerCase() : value;
+  }
+  
+  await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
 }
 
 // Configurar debilidad
-async function setCharacterWeakness(guildId, userId, charName, type) {
-  const characters = await getAllCharacters(guildId, userId);
-  const char = characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
+async function setCharacterWeakness(guildId, charName, type) {
+  const item = await storage.getItemByName(guildId, charName);
   
-  if (!char) {
+  if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
-  if (!char.weaknesses.includes(type.toLowerCase())) {
-    char.weaknesses.push(type.toLowerCase());
+  if (!item.bfStats) {
+    item.bfStats = {
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
   }
   
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  data[userId] = characters;
-  await storage.writeJSON(filePath, data);
+  if (!item.bfStats.weaknesses.includes(type.toLowerCase())) {
+    item.bfStats.weaknesses.push(type.toLowerCase());
+  }
+  
+  await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
 }
 
 // Configurar resistencia
-async function setCharacterResistance(guildId, userId, charName, type) {
-  const characters = await getAllCharacters(guildId, userId);
-  const char = characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
+async function setCharacterResistance(guildId, charName, type) {
+  const item = await storage.getItemByName(guildId, charName);
   
-  if (!char) {
+  if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
-  if (!char.resistances.includes(type.toLowerCase())) {
-    char.resistances.push(type.toLowerCase());
+  if (!item.bfStats) {
+    item.bfStats = {
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
   }
   
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  data[userId] = characters;
-  await storage.writeJSON(filePath, data);
+  if (!item.bfStats.resistances.includes(type.toLowerCase())) {
+    item.bfStats.resistances.push(type.toLowerCase());
+  }
+  
+  await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
 }
 
 // Configurar reflect
-async function setCharacterReflect(guildId, userId, charName, type, percentage) {
-  const characters = await getAllCharacters(guildId, userId);
-  const char = characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
+async function setCharacterReflect(guildId, charName, type, percentage) {
+  const item = await storage.getItemByName(guildId, charName);
   
-  if (!char) {
+  if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
@@ -150,22 +162,35 @@ async function setCharacterReflect(guildId, userId, charName, type, percentage) 
     return { success: false, error: 'El porcentaje debe estar entre 0 y 100' };
   }
   
-  char.reflects[type.toLowerCase()] = percentage;
+  if (!item.bfStats) {
+    item.bfStats = {
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
+  }
   
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  data[userId] = characters;
-  await storage.writeJSON(filePath, data);
+  item.bfStats.reflects[type.toLowerCase()] = percentage;
+  
+  await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
 }
 
 // Equipar habilidad
-async function equipSkill(guildId, userId, charName, skillName) {
-  const characters = await getAllCharacters(guildId, userId);
-  const char = characters.find(c => c.name.toLowerCase() === charName.toLowerCase());
+async function equipSkill(guildId, charName, skillName) {
+  const item = await storage.getItemByName(guildId, charName);
   
-  if (!char) {
+  if (!item) {
     return { success: false, error: 'Personaje no encontrado' };
   }
   
@@ -176,20 +201,70 @@ async function equipSkill(guildId, userId, charName, skillName) {
     return { success: false, error: 'Habilidad no encontrada' };
   }
   
-  if (char.skills.length >= 3) {
+  if (!item.bfStats) {
+    item.bfStats = {
+      hp: 500,
+      maxHp: 500,
+      atk: 100,
+      def: 80,
+      spd: 100,
+      type: 'physical',
+      sp: 100,
+      maxSp: 100,
+      skills: [],
+      weaknesses: [],
+      resistances: [],
+      reflects: {}
+    };
+  }
+  
+  if (item.bfStats.skills.length >= 3) {
     return { success: false, error: 'Máximo 3 habilidades por personaje' };
   }
   
-  if (!char.skills.includes(skill.name)) {
-    char.skills.push(skill.name);
+  if (!item.bfStats.skills.includes(skill.name)) {
+    item.bfStats.skills.push(skill.name);
   }
   
-  const filePath = storage.getFilePath(guildId, 'characters');
-  const data = await storage.readJSON(filePath, {});
-  data[userId] = characters;
-  await storage.writeJSON(filePath, data);
+  await storage.updateItem(guildId, item.name, 'bfStats', item.bfStats);
   
   return { success: true };
+}
+
+// Obtener personajes del usuario (solo los que tiene rol)
+async function getUserCharacters(guildId, userId, guild, member) {
+  const items = await storage.getAllItems(guildId);
+  const userChars = [];
+  
+  for (const item of items) {
+    const objectType = (item.objectType || 'personaje').toLowerCase();
+    if (objectType !== 'personaje') continue;
+    
+    // Verificar si tiene el rol
+    if (item.roleGiven) {
+      let roleToCheck = guild.roles.cache.find((r) => r.name === item.roleGiven);
+      
+      if (!roleToCheck) {
+        const roleMentionMatch = item.roleGiven?.match(/<@&(\d+)>/);
+        if (roleMentionMatch) {
+          roleToCheck = guild.roles.cache.get(roleMentionMatch[1]);
+        }
+      }
+      
+      if (!roleToCheck && item.roleGiven) {
+        roleToCheck = guild.roles.cache.get(item.roleGiven);
+      }
+      
+      if (roleToCheck && member.roles.cache.has(roleToCheck.id)) {
+        const char = await getCharacterFromItem(guildId, item.name);
+        if (char) {
+          userChars.push(char);
+        }
+      }
+    }
+  }
+  
+  return userChars;
 }
 
 // Obtener todas las habilidades comunes
@@ -463,13 +538,13 @@ function calculateDamage(attacker, defender, options = {}) {
 }
 
 module.exports = {
-  createCharacter,
-  getAllCharacters,
-  editCharacter,
+  getCharacterFromItem,
+  editCharacterBFStats,
   setCharacterWeakness,
   setCharacterResistance,
   setCharacterReflect,
   equipSkill,
+  getUserCharacters,
   getAllCommonSkills,
   createCommonSkill,
   deleteCommonSkill,
