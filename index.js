@@ -3277,7 +3277,7 @@ async function handleEditBoss(message, args) {
   }
 
   if (args.length < 3) {
-    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd, reward, difficulty\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
+    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd, price\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
   }
 
   const [bossName, field, value, percentage] = args;
@@ -3292,16 +3292,12 @@ async function handleEditBoss(message, args) {
       return message.reply('❌ Debes especificar el porcentaje de reflect.');
     }
     result = await bossfight.setBossReflect(guildId, bossName, value, parseInt(percentage));
-  } else if (field === 'reward') {
-    result = await bossfight.setBossReward(guildId, bossName, parseInt(value));
-
+  } else if (field === 'price') {
+    result = await bossfight.setBossPrice(guildId, bossName, parseInt(value));
+    
     if (result.success) {
-      const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
-      const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
-      return message.reply(`✅ Recompensa del boss ${bossName} actualizada a **${parseInt(value).toLocaleString('en-US')}${currencySymbol}**`);
+      return message.reply(`✅ Precio de recompensa del boss ${bossName} actualizado a **${parseInt(value).toLocaleString('es-ES')} monedas**`);
     }
-  } else if (field === 'difficulty') {
-    result = await bossfight.setBossDifficulty(guildId, bossName, value);
 
     if (result.success) {
       const difficultyEmojis = {
