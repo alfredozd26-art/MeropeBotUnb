@@ -836,7 +836,7 @@ async function handleCreateItem(message, args) {
   await storage.createItem(guildId, name, 1, 'R', 'Premio obtenido');
 
   const embed = new EmbedBuilder()
-    .setColor(storage.RarityColor(item.rarity))
+    .setColor(storage.getRarityColor('R'))
     .setTitle('✅ Premio Creado')
     .setDescription(`El premio **${name}** ha sido creado con valores por defecto.`)
     .addFields(
