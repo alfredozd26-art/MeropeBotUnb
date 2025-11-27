@@ -3623,7 +3623,7 @@ async function handleCombatButton(interaction) {
   if (boss.currentHp <= 0) {
     combat.deleteSession(guildId, interaction.user.id);
 
-    const rewards = await storage.getConfig(guildId, 'bossfight_rewards') || 1000;
+    const rewards = boss.reward || 1000;
 
     try {
       await unbClient.editUserBalance(guildId, interaction.user.id, { cash: rewards, reason: `Victoria contra ${boss.name}` });
@@ -3631,10 +3631,13 @@ async function handleCombatButton(interaction) {
       console.error('Error otorgando recompensa:', error);
     }
 
+    const customSymbol = await storage.getConfig(guildId, 'custom_currency_symbol');
+    const currencySymbol = customSymbol || (await unbClient.getGuild(guildId).catch(() => null))?.currencySymbol || '💰';
+
     const embed = new EmbedBuilder()
       .setColor(0x00FF00)
       .setTitle('🎉 ¡VICTORIA!')
-      .setDescription(`¡Has derrotado a **${boss.name}**!\n\n💰 Recompensa: **${rewards}** monedas`)
+      .setDescription(`¡Has derrotado a **${boss.name}**!\n\n${currencySymbol} Recompensa: **${rewards}** monedas`)
       .addFields({ name: 'Acción final', value: playerAction, inline: false });
 
     return interaction.editReply({ embeds: [embed], components: [] });
