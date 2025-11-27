@@ -659,6 +659,27 @@ async function setBossDifficulty(guildId, bossName, difficulty) {
   return { success: true };
 }
 
+// Configurar precio de recompensa del boss
+async function setBossPrice(guildId, bossName, price) {
+  const bosses = await getAllBosses(guildId);
+  const boss = bosses.find(b => b.name.toLowerCase() === bossName.toLowerCase());
+
+  if (!boss) {
+    return { success: false, error: 'Boss no encontrado' };
+  }
+
+  if (price < 0) {
+    return { success: false, error: 'El precio debe ser un número positivo' };
+  }
+
+  boss.price = price;
+
+  const filePath = storage.getFilePath(guildId, 'bosses');
+  await storage.writeJSON(filePath, { bosses });
+
+  return { success: true };
+}
+
 // Calcular daño
 function calculateDamage(attacker, defender, options = {}) {
   const { skillType, skillDamage, weaknesses = [], resistances = [], reflects = {} } = options;
@@ -713,5 +734,6 @@ module.exports = {
   deleteBossSkill,
   setBossReward,
   setBossDifficulty,
+  setBossPrice,
   calculateDamage
 };

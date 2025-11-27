@@ -3298,17 +3298,6 @@ async function handleEditBoss(message, args) {
     if (result.success) {
       return message.reply(`✅ Precio de recompensa del boss ${bossName} actualizado a **${parseInt(value).toLocaleString('es-ES')} monedas**`);
     }
-
-    if (result.success) {
-      const difficultyEmojis = {
-        'facil': '🟢',
-        'normal': '🟡',
-        'dificil': '🟠',
-        'extremo': '🔴'
-      };
-      const emoji = difficultyEmojis[value.toLowerCase()] || '';
-      return message.reply(`✅ Dificultad del boss ${bossName} actualizada a **${emoji} ${value.charAt(0).toUpperCase() + value.slice(1)}**`);
-    }
   } else {
     result = await bossfight.editBoss(guildId, bossName, field.toLowerCase(), parseInt(value));
   }
