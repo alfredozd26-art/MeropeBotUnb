@@ -1860,7 +1860,7 @@ async function handleFixHelp(message) {
     .addFields(
       {
         name: '⚔️ Bossfight - Editar',
-        value: '**`*editboss <boss> <campo> <valor>`** - Editar stats (hp, atk, def, spd, price)\n**`*editboss <boss> price 500`** - Precio recompensa\n**`*editboss <boss> deb <tipo>`** - Debilidad\n**`*editboss <boss> reflect <tipo> <porcentaje>`**',
+        value: '**`*editboss <boss> <campo> <valor>`** - Editar stats (hp, atk, def, spd)\n**`*editboss <boss> price 500`** - Costo entrada\n**`*editboss <boss> reward 1000`** - Recompensa ganar\n**`*editboss <boss> deb <tipo>`** - Debilidad\n**`*editboss <boss> reflect <tipo> <porcentaje>`**',
         inline: false
       },
       {
@@ -3277,7 +3277,7 @@ async function handleEditBoss(message, args) {
   }
 
   if (args.length < 3) {
-    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd, price\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
+    return message.reply('❌ Uso: `*editboss <boss> <campo> <valor>`\nCampos: hp, atk, def, spd, price, reward\nTambién: `*editboss <boss> deb/resist <tipo>`\n`*editboss <boss> reflect <tipo> <porcentaje>`');
   }
 
   const [bossName, field, value, percentage] = args;
@@ -3296,7 +3296,13 @@ async function handleEditBoss(message, args) {
     result = await bossfight.setBossPrice(guildId, bossName, parseInt(value));
     
     if (result.success) {
-      return message.reply(`✅ Precio de recompensa del boss ${bossName} actualizado a **${parseInt(value).toLocaleString('es-ES')} monedas**`);
+      return message.reply(`✅ Costo de entrada al boss ${bossName} actualizado a **${parseInt(value).toLocaleString('es-ES')} monedas**`);
+    }
+  } else if (field === 'reward') {
+    result = await bossfight.setBossReward(guildId, bossName, parseInt(value));
+    
+    if (result.success) {
+      return message.reply(`✅ Recompensa por ganar contra ${bossName} actualizada a **${parseInt(value).toLocaleString('es-ES')} monedas**`);
     }
   } else {
     result = await bossfight.editBoss(guildId, bossName, field.toLowerCase(), parseInt(value));

@@ -659,7 +659,7 @@ async function setBossDifficulty(guildId, bossName, difficulty) {
   return { success: true };
 }
 
-// Configurar precio de recompensa del boss
+// Configurar costo de entrada del boss
 async function setBossPrice(guildId, bossName, price) {
   const bosses = await getAllBosses(guildId);
   const boss = bosses.find(b => b.name.toLowerCase() === bossName.toLowerCase());
