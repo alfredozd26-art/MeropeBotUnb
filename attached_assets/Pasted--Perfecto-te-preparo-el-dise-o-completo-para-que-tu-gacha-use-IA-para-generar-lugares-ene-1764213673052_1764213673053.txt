@@ -1,0 +1,349 @@
+¡Perfecto — te preparo **el diseño completo** para que tu gacha use **IA** para generar lugares, enemigos, eventos, Social Links y loot automáticamente. Lo dejaré listo para pegar en tu bot (estructura, prompts, ejemplos, guardrails, y código/esquemas útiles). Voy directo al grano y práctico.
+
+# Diseño: IA-procedural para tu gacha (resumen rápido)
+
+* La IA **genera contenido al vuelo** (lugares, enemigos, eventos, SLs, cofres).
+* Tu bot **controla las reglas** (balance, límites, tablas, economía).
+* Resultado: contenido casi infinito, coherente y alineado con tu sistema de combate/gacha.
+* Entregable en esta respuesta: arquitectura, prompts listos, schemas JSON, ejemplos generados, snippets de integración, guardrails (filtrado/validación) y roadmap de implementación.
+
+---
+
+# 1) Arquitectura general (cómo encajan las piezas)
+
+1. **Comando del usuario** (ej. `/explorar callejón`) →
+2. **Pre-check local**: determina nivel recomendado, tema, probabilidad de evento especial.
+3. **Prompt builder** (será tu plantilla con variables: nivel, tono, tags, restricciones) →
+4. **Llamada a la IA** (modelo) con temperature/control (p. ej. temp 0.6 para creatividad controlada).
+5. **Respuesta IA (JSON)** →
+6. **Validación y normalización** (filtrado de seguridad, clamp de valores, balance) →
+7. **Guardado en cache / DB** (para reproducibilidad y evitar repetir llamadas) →
+8. **Render al jugador** (texto + botones de acción); iniciar combate si corresponde.
+
+Opcional: un motor secundario que "post-procese" la IA para sacar parámetros exactos de combate (HP, DEF, habilidades).
+
+---
+
+# 2) Qué pedirle a la IA: prompt templates (usa estas tal cual)
+
+Usa variables entre `{{ }}`.
+
+### A) Generar lugar (prompt)
+
+```
+Sistema: Eres un generador de lugares breves para un juego tipo Persona/gacha. Devuelve JSON.
+Usuario: Genera un LUGAR único para un juego gacha. Responde SOLO en JSON con campos:
+{
+ "id": "<slug>",
+ "name": "<nombre corto>",
+ "tone": "<mood: eerie/peaceful/urban/scenic/industrial>",
+ "description": "<1-2 frases evocativas, 50-120 caracteres>",
+ "level_range": [minLevel, maxLevel],
+ "possible_events": ["combat","social","loot","mystery"],
+ "special_tag": "<one-word tag, e.g. 'haunted' or 'market'>"
+}
+Condiciones: lenguaje seguro; no violencia gráfica; local máximo 120 caracteres en descripción.
+Contexto: nivel recomendado {{level}}; theme tags: {{tags}}.
+```
+
+### B) Generar enemigo (prompt)
+
+```
+Sistema: Genera un enemigo (Shadow) para combate. Responde SOLO en JSON.
+Usuario: Crea un ENEMIGO único para nivel {{level}}. Responde JSON:
+{
+ "id":"<slug>",
+ "name":"<Nombre evocativo>",
+ "appearance":"<1 frase>",
+ "level": <level>,
+ "hp": <int>,
+ "atk": <int>,
+ "def": <int>,
+ "agi": <int>,
+ "element": "<Fire/Ice/Electric/Wind/Light/Dark/Physical/Nuclear>",
+ "weakness": "<element or 'none'>",
+ "resist": ["<elements>"],
+ "skills":[
+   {"name":"<skill1>","type":"physical|magic|support","element":"", "power": <int>,"sp": <int>}
+ ],
+ "loot_table": [{"item":"<id>","chance":<0-100>}]
+}
+Rules: HP/ATK/DEF/AGI must scale with level under your balancing rules.
+```
+
+### C) Generar evento / Social Link snippet (prompt)
+
+```
+Sistema: Genera un evento corto para Social Link en juego gacha. Responde SOLO JSON.
+Usuario: Crea un evento de Social Link para NPC {{npc_name}} al nivel SL {{sl_level}}. Responde:
+{
+ "npc":"{{npc_name}}",
+ "sl_level": {{sl_level}},
+ "title":"<short title>",
+ "description":"<one or two lines, 80-160 chars>",
+ "choices":[
+   {"id":"A","text":"<choice text>","outcome":"<stat_change or sl_points>"},
+   {"id":"B","text":"<choice text>","outcome":"..."}
+ ],
+ "rewards":[{"type":"slxp","amount":<int>}, {"type":"item","id":"..."}]
+}
+Constraints: avoid sexual content, hate speech, or real-person references.
+```
+
+---
+
+# 3) Ejemplos de salidas generadas (mock IA)
+
+(Estos sirven para que veas el formato exacto)
+
+### Lugar (ejemplo)
+
+```json
+{
+ "id":"callejon-takoyaki",
+ "name":"Callejón del Takoyaki",
+ "tone":"eerie",
+ "description":"Un puesto de takoyaki abandonado con vapor que no se disipa.",
+ "level_range":[3,6],
+ "possible_events":["combat","loot"],
+ "special_tag":"market"
+}
+```
+
+### Enemigo (ejemplo)
+
+```json
+{
+ "id":"shadow-lamenter",
+ "name":"Llorón Retorcido",
+ "appearance":"Un maniquí con lágrimas de tinta y ojos huecos.",
+ "level":4,
+ "hp":120,
+ "atk":26,
+ "def":12,
+ "agi":30,
+ "element":"Dark",
+ "weakness":"Ice",
+ "resist":["Dark"],
+ "skills":[
+   {"name":"Sorrow Lash","type":"physical","element":"Physical","power":40,"sp":0},
+   {"name":"Abyss Pulse","type":"magic","element":"Dark","power":55,"sp":8}
+ ],
+ "loot_table":[{"item":"ink_shard","chance":30},{"item":"potion","chance":70}]
+}
+```
+
+### Social Link event (ejemplo)
+
+```json
+{
+ "npc":"Izumi Kuronaga",
+ "sl_level":1,
+ "title":"Un favor por una caja",
+ "description":"Izumi te pide ayuda para mover cajas. Durante el trabajo, revela un detalle sobre su pasado.",
+ "choices":[
+   {"id":"A","text":"Ofrecer ayuda (gentil)","outcome":"+1 slxp, +1 empathy"},
+   {"id":"B","text":"Hacerlo rápido (pragmatic)","outcome":"+0 slxp, +1 courage, -1 empathy"}
+ ],
+ "rewards":[{"type":"slxp","amount":2},{"type":"item","id":"packing_tape"}]
+}
+```
+
+---
+
+# 4) Esquema JSON de verificación / validación (obligatorio)
+
+Al recibir JSON de la IA, corre estas validaciones **antes** de usarlo:
+
+* `id` regex: `^[a-z0-9_-]{3,40}$`
+* `level` entre minLevel y maxLevel de tu sistema (p. ej. 1–100).
+* `hp, atk, def, agi, power, sp` → numéricos y dentro de límites por nivel (ver sección Balance).
+* `element` en whitelist (Fire/Ice/Electric/Wind/Light/Dark/Physical/Nuclear).
+* `loot_table` → sumatoria de `chance` ≤ 100.
+* `description` length clamp ≤ 200 chars.
+* blocklist check: pasa la `description`, `name`, `appearance` por un filtro de moderación (palabras prohibidas).
+
+Si falla validación: fallback a plantilla segura pre-generada y marca el evento para revisión.
+
+---
+
+# 5) Balance y fórmulas (sencillas y reproducibles)
+
+Define **curvas** por nivel (ejemplo razonable):
+
+* HP_base(level) = 50 + level × 18
+* ATK_base(level) = 10 + floor(level × 2.5)
+* DEF_base(level) = 6 + floor(level × 1.5)
+* AGI_base(level) = 8 + floor(level × 1.6)
+
+Ejemplo paso a paso (requisito aritmética):
+Si `level = 4`:
+
+* HP = 50 + 4 × 18
+
+  * 4 × 18 = 72
+  * 50 + 72 = 122 → HP = 122
+* ATK = 10 + floor(4 × 2.5)
+
+  * 4 × 2.5 = 10.0
+  * floor(10.0) = 10
+  * 10 + 10 = 20 → ATK = 20
+
+Usa `±15%` random variance post-IA clamp para variedad.
+
+### Fórmula de daño (ejemplo numérico)
+
+Damage flow (player using skill):
+
+1. SkillPower = skill.power (ej. 80)
+2. AttackEffective = ATK_player + SkillPower
+3. DefenseEffective = DEF_enemy / 2
+4. BaseDamage = max(1, AttackEffective − DefenseEffective)
+5. Multiply by elemental modifier: Weak ×2, Resist ×0.5, Null ×0, Drain ×1 (heal)
+6. Random multiplier between 0.9 and 1.1
+
+Ejemplo numérico paso a paso:
+
+* ATK_player = 30, SkillPower = 80 → AttackEffective = 30 + 80 = 110
+* DEF_enemy = 20 → DEF_enemy / 2 = 10
+* BaseDamage = 110 − 10 = 100
+* Enemy is weak to element (×2): 100 × 2 = 200
+* Random multiplier 0.95: 200 × 0.95 = 190 → FinalDamage = 190
+
+(He mostrado los cálculos dígito a dígito como pediste.)
+
+---
+
+# 6) Prompt engineering: parámetros sugeridos y variantes
+
+* **Temperature**: 0.55 (Creatividad sin salir de límites)
+* **Top_p**: 0.9
+* **Max tokens**: 300 (lugares/enemigos cortos)
+* **System prompt**: fuerza a responder SOLO en JSON con `\```json` wrapper opcional.
+* **Few-shot examples**: incluye 2 ejemplos en el prompt para estilo coherente.
+* **Seed reproducibility**: guarda the IA output JSON in DB and reuse the same ID for repeated visits to that node.
+
+---
+
+# 7) Filtrado / Seguridad / Moderación
+
+* Pasa todos los textos por tu **moderation filter** (palabras prohibidas, sexual content, slurs).
+* Si falla la moderación, reemplaza con plantilla neutral y marca el caso.
+* Implementa límites de rare/legendary loot para evitar explotaciones.
+
+---
+
+# 8) Cache y reproducibilidad
+
+* **Cache key**: hash of (route + level + user_id + timestamp-window e.g. day) para que el mismo usuario vea el mismo contenido si vuelve al mismo timestamp-window.
+* Guarda IA outputs en una tabla `generated_content` con campos: id, type, seed_meta, json, created_at, used_count.
+* TTL configurable (p. ej. 7 días).
+
+---
+
+# 9) Integración técnica rápida (Node.js pseudo)
+
+```js
+// pseudocode - adapta a la librería que uses
+async function generateEnemy(level, tags = []) {
+  const prompt = buildPrompt('enemy', { level, tags });
+  const resp = await openai.createCompletion({ model: "gpt-4o-mini", prompt, temperature:0.55, max_tokens:300 });
+  const json = safeParseJSON(resp.text);
+  if (!validateEnemy(json)) return fallbackEnemy(level);
+  const clamped = clampEnemyStats(json);
+  await db.save('generated', clamped);
+  return clamped;
+}
+```
+
+* **Nota**: sustituye `openai.createCompletion` por la llamada que uses.
+* Añade circuit breaker y rate limiting (evita llamar IA en bucle).
+
+---
+
+# 10) Prompts listos para copiar (ejemplos finales que uses tal cual)
+
+* `PROMPT_PLACE` (usar template A).
+* `PROMPT_ENEMY` (usar template B con 2 few-shot examples).
+* `PROMPT_SL_EVENT` (usar template C).
+
+(Te los dejé completos arriba; cópialos en tus archivos.)
+
+---
+
+# 11) Reglas de diseño UX en el bot (cómo se muestra al usuario)
+
+* Mostrar **1–2 frases** descriptivas del lugar + 2 botones: `Explorar` / `Volver`.
+* En evento de combate: muestra enemigo (nombre, apariencia corta, nivel, debilidad icon). Botones: `Atacar` `Defender` `Persona` `Flee`.
+* En Social Link: muestra la línea, 2–3 elecciones breves, y el resultado inmediato (slxp, stat change).
+* Mostrar `Historia breve generada` opcional con botón `+detalles` (si quieres leer 3–4 líneas extra).
+
+---
+
+# 12) Ejemplos prácticos (flujo completo)
+
+1. Usuario escribe `/explorar callejon` →
+2. Bot pre-check: nivel recomendado 3–5 →
+3. Llama `PROMPT_PLACE` → recibe `callejon-takoyaki` JSON →
+4. Bot muestra descripción y dos botones: `Revisar puesto` (puede generar loot) y `Seguir sombra` (genera enemigo con `PROMPT_ENEMY`) →
+5. Si elige `Seguir sombra`, generar enemigo, validar, iniciar combate.
+
+---
+
+# 13) Guardrails para evitar "contenido roto"
+
+* Limitar buffs a máximo +50% por stack.
+* Limitar daño absoluto por turno según nivel.
+* Revisar `loot_table` para que monedas/objetos no excedan economía.
+* Un sistema de "cooldown rare spawn" para bosses.
+
+---
+
+# 14) Roadmap de implementación (priorizado — 6 sprints)
+
+1. **Sprint 1 (1–3 días)**: Implementar prompt builder + enemy/place JSON parse + local fallback.
+2. **Sprint 2 (2–4 días)**: Integrar IA calls con caching + validation + sample place/enemy flow.
+3. **Sprint 3 (3–6 días)**: Sistema de combate básico con debilidades y SP/HP.
+4. **Sprint 4 (3–6 días)**: Social Link generator + SL progression + small UI messages.
+5. **Sprint 5 (4–8 días)**: Tuning & balance tables + moderation hooks.
+6. **Sprint 6 (2–4 días)**: Add fusions/velvet-like mechanics + raid/boss architecture.
+
+(Adaptable según tu tiempo y equipo.)
+
+---
+
+# 15) Testing & QA
+
+* Unit tests para `validateEnemy`, `clampStats`, `damageCalc`.
+* Playtests con seed set para reproducir bugs.
+* Panel admin para rejugar / regenerar contenido problemático.
+
+---
+
+# 16) Ejemplo de prompt "completo" para enemigo con few-shot (pégalo tal cual)
+
+```
+Sistema: Eres un generador de enemigos tipo "Shadow" para un juego gacha. Responde SOLO en JSON. Sigue estrictamente el esquema y limita numbers a valores sensatos. No incluyas explicaciones.
+
+Ejemplo1:
+{ "id":"shadow-breeze", "name":"Soplo Helado", "appearance":"Figura envuelta en nieve negra.", "level":3, "hp":110, "atk":22, "def":10, "agi":28, "element":"Ice", "weakness":"Fire", "resist":["Ice"], "skills":[{"name":"Frost Bite","type":"magic","element":"Ice","power":48,"sp":6}], "loot_table":[{"item":"ice_shard","chance":25}] }
+
+Now: Generate enemy for level {{level}} with tags {{tags}}.
+```
+
+---
+
+# 17) Extras interesantes (para que destaque)
+
+* **Seeded “theme chains”**: si un usuario explora varios lugares con same theme, genera a partir de prior seed para una mini-arco argumental procedural.
+* **Meta-enemigo** que aprende de combates del servidor (analytics) — cuidado con balance.
+* **Modo “creador”** para que admins generen manualmente y revisen IA outputs antes de publicar.
+
+---
+
+# 18) Resumen final y siguiente paso recomendado
+
+Tienes todo lo necesario para añadir generación IA a tu gacha: prompts, JSON schema, validaciones, balance, ejemplos y roadmap.
+Si quieres, ahora te doy **1)** el set completo de prompts listos en archivos (`PROMPT_PLACE.txt`, `PROMPT_ENEMY.txt`, `PROMPT_SL.txt`) o **2)** te doy el código `generateEnemy()` y `validateEnemy()` listo para pegar en Node.js con comentarios.
+
+¿Quieres que te entregue los **prompts listos en bloques descargables** (archivos), o prefieres que te pase el **snippet Node.js completo** para integrar ya en tu bot?
